@@ -90,10 +90,6 @@ This specification defines the following groups of common elements that can be e
 - `video`: A video element, which is played once without transition.
 - `effect`: An effect element, which affects most image elements.
 
-This specification also defines the following individual common elements:
-
-- `layout`: The layout element, which offers an opaque way to control the styling and position of certain elements and general game UI.
-
 ### Elements
 
 An element has at least the following properties:
@@ -144,18 +140,18 @@ An effect element has at least the following properties, in addition to those of
 
 - `value`: The name of the effect.
 
-### Layout element
-
-A layout element has at least the following properties, in addition to those of an element:
-
-- `value`: The name of the layout, including none (images only), dialogue, introduction, monologue, video, choice, etc. A specific visual novel engine may offer its own layouts tailored to a specific visual novel, and a layout switch may have engine defined transitions as well as side effects on certain elements (e.g. setting choice elements to `none` upon leaving choice layout).
-
 ### Video elements
 
 A video element has at least the following properties, in addition to those of an element:
 
 - `value`: The source of the audio.
 - `loop`: Whether the video should be looped, and defaults to `false` unless otherwise specified.
+
+## Layout
+
+The `set_layout` command sets the current layout, which offers an opaque way to control the styling and position of certain elements and general game UI. The default layout is `none`.
+
+Common layouts include `none` (images only), `dialogue`, `introduction`, `monologue`, `video`, `choice`, etc. A specific visual novel engine may offer its own layouts tailored to a specific visual novel, and a layout change may have engine defined transitions as well as side effects on certain elements (e.g. setting choice elements to `none` upon leaving choice layout).
 
 ## Timing
 
@@ -169,6 +165,7 @@ A number of commands can serve as a suspension point:
 - `: pause`: Suspend the execution until the user continues, including making a choice.
 - `: wait element_properties`: Suspend the execution until the specified property transitions are completed or the user interrupts. Other property transitions that started as part of the suspension will keep running. For audio and video elements, both their volume and playback are considered transitions.
 - `: snap element_properties`: Suspend the execution momentarily and snap the specified property transitions to their end values before continuing execution. Other property transitions that started as part of the suspension will keep running. For audio and video elements, both their volume and playback are considered transitions.
+- `: set_layout layout_name`: Suspend the execution until the specified layout transition is completed or the user interrupts. Elements that no longer exists in the new layout will have their `value`s snapped to `none`. Other property transitions that started as part of the suspension will keep running.
 
 Element properties are specified as a string of comma separated `element.property` pairs. Specifying an element without a property implies all properties of the element.
 
