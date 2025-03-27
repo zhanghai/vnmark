@@ -159,15 +159,17 @@ Commands are executed sequentially, but their effects (including transitions) ma
 
 In VNMark, command effects won't be visible to the user until a suspension point is encountered, where the command execution will be suspended and pending property transitions will start to run automatically.
 
-A number of commands can serve as a suspension point:
+A number of commands can serve as suspension points:
 
-- `: sleep duration_millis`: Suspend the execution for a number of milliseconds or until the user interrupts.
+- `: delay duration_millis`: Suspend the execution for a number of milliseconds or until the user interrupts to continue.
 - `: pause`: Suspend the execution until the user continues, including making a choice.
-- `: wait element_properties`: Suspend the execution until the specified property transitions are completed or the user interrupts. Other property transitions that started as part of the suspension will keep running. For audio and video elements, both their volume and playback are considered transitions.
+- `: wait element_properties`: Suspend the execution until the specified property transitions are completed or the user interrupts to continue. Other property transitions that started as part of the suspension will keep running. For audio and video elements, both their volume and playback are considered transitions.
 - `: snap element_properties`: Suspend the execution momentarily and snap the specified property transitions to their end values before continuing execution. Other property transitions that started as part of the suspension will keep running. For audio and video elements, both their volume and playback are considered transitions.
-- `: set_layout layout_name`: Suspend the execution until the specified layout transition is completed or the user interrupts. Elements that no longer exists in the new layout will have their `value`s snapped to `none`. Other property transitions that started as part of the suspension will keep running.
+- `: set_layout layout_name`: Suspend the execution until the specified layout transition is completed or the user interrupts to continue. Elements that no longer exists in the new layout will have their `value`s snapped to `none`. Other property transitions that started as part of the suspension will keep running.
 
-Element properties are specified as a string of comma separated `element.property` pairs. Specifying an element without a property implies all properties of the element.
+For the `wait` and `snap` commands, element properties are specified as a string of comma separated `element.property` pairs. Specifying an element without a property implies all properties of the element.
+
+In addition, the `continue` command allows automatically continuing execution at the next suspension point, if the user interrupted to continue at the previous suspension point. This can be useful when combining multiple `delay` or `wait` commands to create a single animation.
 
 ## Shorthands
 
