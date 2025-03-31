@@ -69,7 +69,7 @@ If an element name ends with a number and that number is one (`1`), it is consid
 
 The property values have data types similar to that of [CSS data types](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Types). The main difference is that quoting is optional for string values, where only single quotes (`'`) are used for quoting and only single quotes (`'`) and backslash (`\`) within the quoted string need to be escaped by backslash (`\`). Setting a property value to the special value `initial` is equivalent to reverting it to its initial state as if it was never manually set.
 
-Most element properties have automatic transitions, and those transitions may be customized with the `transition` property similar to that of [CSS](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_transitions/Using_CSS_transitions).
+Most element properties have automatic transitions, and those transitions may be customized with the `transition_*` properties similar to that of [CSS](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_transitions/Using_CSS_transitions).
 
 For elements with a `value` property, setting that to the special value `none` will make the element return to an empty state, with all its properties reset to their default values. In case a literal string `'none'` is need, it can be specified with quotation.
 
