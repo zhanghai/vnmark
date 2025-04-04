@@ -14,9 +14,8 @@ A VNMark document is composed of a required front-matter, a blank line, and a bo
 
 Lines are always separated by newlines (`\n`). Carriage returns, spaces and tabs are considered whitespace. Hash (`#`), semicolon (`;`), colon (`:`), comma (`,`), equals (`=`), double quote (`"`) and backtick (`` ` ``) are considered special characters.
 
-There are 4 types of text entities in a line:
+There are 3 types of values in a line:
 
-- Name: A name starts with a letter or underscore (`_`), optionally followed by zero to multiple letters, digits or underscores.
 - Literal value: A value can be written literally without any quotation, and whitespace surrounding it is ignored.
 - Quoted value: A value can be written within double quotes (`"`), and certain escape sequences (`\t`, `\r`, `\n`, `\\`, `\"` and `\uFFFF`) are interpreted within it.
 - Script value: JavaScript can be written within backticks (`"`) as a value, and certain escape sequences (`\t`, `\r`, `\n`, `\\`, `` \` `` and `\uFFFF`) are interpreted within it. The value of a script value is its evaluation output.
@@ -36,11 +35,15 @@ Other front-matter values are optional, and common values with example defaut va
 ```yaml
 width: 1280
 height: 720
-batched_elements: [name, avatar, text, voice]
+macro_line:
+  - name: $1
+  - avatar: $2
+  - text: $3
+  - voice: $4
 blank_line:
-- : wait background*, figure*, foreground*, avatar*, name*, text*, choice*, voice*
-- : snap background*, figure*, foreground*, avatar*, name*, text*, choice*, voice*
-- : pause
+  - : wait background*, figure*, foreground*, avatar*, name*, text*, choice*, voice*
+  - : snap background*, figure*, foreground*, avatar*, name*, text*, choice*, voice*
+  - : pause
 ```
 
 ## Comments
@@ -55,7 +58,7 @@ Comments start with a hash (`#`) and everything after it on that line is ignored
 
 A command is an abstract instruction to the underlying visual novel engine. It starts with a colon (`:`), and is followed by the command name, then a comma (`,``) separated list of arguments. The arguments to a command are position based, and can be interpreted differently based on the command definition.
 
-Here is an example of the `set_property` command, which is more often expressed with shorthands to be described later:
+Here is an example of the `set_property` command, which is more often expressed with the element line to be described later:
 
 ```
 : set_property element_name, name, value
@@ -65,13 +68,13 @@ Here is an example of the `set_property` command, which is more often expressed 
 
 The majority of commands in a VNMark document will be operating on predefined elements and their properites with the `set_property` command.
 
-If an element name ends with a number and that number is one (`1`), it is considered equivalent to the name without the trailing number. The most commonly used property of an element is usually named `value`, so that the name may be omitted when using shorthands.
+If the element name is a glob pattern, the command will apply to all existing elements matching that glob pattern, but won't create any new element. If the element name ends with a number and that number is one (`1`), it is considered equivalent to the name without the trailing number. The most commonly used property of an element is usually named `value`, so that the name may be omitted when using element lines.
 
 The property values have data types similar to that of [CSS data types](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Types). The main difference is that quoting is optional for string values, where only single quotes (`'`) are used for quoting and only single quotes (`'`) and backslash (`\`) within the quoted string need to be escaped by backslash (`\`). Setting a property value to the special value `initial` is equivalent to reverting it to its initial state as if it was never manually set.
 
 Most element properties have automatic transitions, and those transitions may be customized with the `transition_*` properties similar to that of [CSS](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_transitions/Using_CSS_transitions).
 
-For elements with a `value` property, setting that to the special value `none` will make the element return to an empty state, with all its properties reset to their default values. In case a literal string `'none'` is need, it can be specified with quotation.
+For elements with a `value` property, setting that to the special value `none` will remove the element after the next suspension point, and all its properties will be reset to their default values. In case a literal string `'none'` is need, it can be specified with quotation.
 
 ### Common elements
 
@@ -167,26 +170,26 @@ A number of commands can serve as suspension points:
 - `: snap element_properties`: Suspend the execution momentarily and snap the specified property transitions to their end values. Other property transitions that started as part of the suspension will keep running. For audio and video elements, both their volume and playback are considered transitions.
 - `: set_layout layout_name`: Suspend the execution until the specified layout transition is completed or the user skips. Elements that no longer exists in the new layout will have their `value`s snapped to `none`. Other property transitions that started as part of the suspension will keep running.
 
-For the `wait` and `snap` commands, element properties are specified as a string of comma separated `element.property` pairs. Specifying an element without a property implies all properties of the element.
+For the `wait` and `snap` commands, element properties are specified as a string of comma separated `element.property` pairs, which may be glob patterns. Specifying an element without a property implies all properties of the element.
 
 In addition, the `skip` command keeps skipping at the next suspension point, if the user skipped at the previous suspension point that allowed them to skip. This can be useful for combining multiple `delay` or `wait` commands to create a single animation.
 
 ## Shorthands
 
-Despite the versatility of commands, the majority of a VNMark document is still expected to be composed of shorthands thanks to their easier to read/write syntax.
+Despite the versatility of commands, a significant portion of a VNMark document is still expected to be composed of shorthand lines thanks to their easier to read/write syntax.
 
-### Element shorthands
+### Element lines
 
-The element shorthand is a shorter equivalent to a series of `set_property` commands on an element, and it takes the following form:
+The element line is a shorthand for a series of `set_property` commands on an element, and it takes the following form:
 
 ```
-element_name: (name=)value, name2=value2, name3=value3, ...
+element_name: (name1=)value1, name2=value2, name3=value3, ...
 ```
 
 Which will be translated to:
 
 ```
-: set_property name value
+: set_property name1 value1
 : set_property name2 value2
 : set_property name3 value3
 ...
@@ -194,50 +197,49 @@ Which will be translated to:
 
 The name of the first value may be omitted and it will default to `value`. The same name may be specified multiple times, and the last one will win due to the translation to a series of commands.
 
-An example of element shorthand can be:
+An example of element line can be:
 
 ```
 text: Hello, World!
 ```
 
-### Batched element shorthands
+### Macro lines
 
-The batched elemenet shorthand is an even shorter equivalent to a series of element shorthands, and it takes the following form:
-
-```
-element_shorthand_1; element_shorthand_2; element_shorthand_3 ...
-```
-
-Which will be translated to:
+The macro line is a shorthand for a parameterized series of lines, and it takes the following form:
 
 ```
-batched_element_1: element_shorthand_1
-batched_element_2: ement_shorthand_2
-batched_element_3: element_shorthand_3
-...
+argument_1; argument_2; argument_3 ...
 ```
 
-The list of batched element names is defined in front-matter with `batched_elements`.
+Which will be replaced with the value of `macro_line` in front-matter, with the `$n` patterns being substituted with the arguments.
 
-An example of batched element shorthand can be:
+The default value for `macro_line` is:
 
 ```
-vnmark: 1.0.0
-batched_elements: [name, text, voice]
+macro_line:
+  - name: $1
+  - avatar: $2
+  - text: $3
+  - voice: $4
+```
 
-VNMark; Hello, World!; vnm_0001
+And an example using the default value can be:
+
+```
+VNMark; vnm_happy; Hello, World!; vnm_0001
 ```
 
 ### Blank lines
 
-The blank line shorthand is a way to naturally and easily transition between adjacent scenes or dialogues. It takes the form of a blank line (without comments, but whitespaces are fine).
+The blank line is a way to naturally and easily transition between adjacent scenes or dialogues. It takes the form of a blank line (without comments, but whitespaces are fine).
 
 The list of commands a blank line is translated into is defined in front-matter with `blank_line`, and the default value is:
 
 ```
-: wait background*, figure*, foreground*, avatar*, name*, text*
-: snap background*, figure*, foreground*, avatar*, name*, text*
-: pause
+blank_line:
+  - : wait background*, figure*, foreground*, avatar*, name*, text*
+  - : snap background*, figure*, foreground*, avatar*, name*, text*
+  - : pause
 ```
 
 ## Resources
@@ -293,7 +295,7 @@ Labels are created with the `label` pseudo command:
 : label label_name
 ```
 
-The `label` pseudo command is scanned immediately after document load for labels, and has no effect when actually executed. It is an error to specify the same label twice in a document and that error should be raised before actual execution.
+The `label` pseudo command is scanned immediately after document load for labels, and has no effect when actually executed. The command will be ignored if its name is specified as a script value. It is an error to specify the label name as a script value, or specify the same label name twice in a document, and these errors will be raised before actual execution.
 
 The `jump` command unconditionally jumps to the specified label:
 
@@ -337,53 +339,50 @@ The [Peggy](https://github.com/peggyjs/peggy) grammar for VNMark is defined as f
 }}
 
 Document
-  = frontMatter:FrontMatter body:('\n' _ '\n' @Body)? { return {type: 'Document', location: location(), frontMatter, body}; }
+  = frontMatter:FrontMatter body:('\n' _ '\n' @Body)? { return { type: 'Document', location: location(), frontMatter, body }; }
 
 FrontMatter
-  = metadata:$('vnmark: ' ([^\n] / ('\n' _ [^\n\r\t ]))*) { return {type: 'FrontMatter', location: location(), metadata: Yaml.parse(metadata)}; }
+  = metadata:$('vnmark: ' ([^\n] / ('\n' _ [^\n\r\t ]))*) { return { type: 'FrontMatter', location: location(), metadata: Yaml.parse(metadata) }; }
 
 Body
-  = lines:Line|1.., '\n'| { return {type: 'Body', location: location(), lines}; }
+  = lines:Line|1.., '\n'| { return { type: 'Body', location: location(), lines }; }
 
 Line
   = BlankLine
   / CommentLine
   / CommandLine
   / ElementLine
-  / BatchedElementsLine
+  / MacroLine
 
 BlankLine
-  = _ _N { return {type: 'BlankLine', location: location(), comment: null }; }
+  = _ _N { return { type: 'BlankLine', location: location(), comment: null }; }
 
 CommentLine
-  = _ comment:Comment _N { return {type: 'CommentLine', location: location(), comment }; }
+  = _ comment:Comment _N { return { type: 'CommentLine', location: location(), comment }; }
 
 Comment
-  = '#' value:$[^\n]* { return {type: 'Comment', location: location(), value}; }
+  = '#' value:$[^\n]* { return { type: 'Comment', location: location(), value }; }
 
 CommandLine
-  = _ ':' _ name:Name arguments_:(_ @ArgumentList)? _ comment:Comment? _N { return {type: 'CommandLine', location: location(), name, arguments: arguments_ || [], comment}; }
-
-ArgumentList
-  = Value|1.., _ ',' _|
+  = _ ':' _ name:Value arguments_:(_ @Value|1.., _ ',' _|)? _ comment:Comment? _N { return { type: 'CommandLine', location: location(), name, arguments: arguments_ ?? [], comment }; }
 
 ElementLine
-  = _ name:Name _ ':' _ properties:PropertyList _ comment:Comment? _N { return {type: 'ElementLine', location: location(), name, properties, comment}; }
-
-BatchedElementsLine
-  = _ batchedProperties:PropertyList|1.., _ ';' _| _ comment:Comment? _N { return {type: 'BatchedElementsLine', location: location(), batchedProperties, comment}; }
+  = _ name:Value _ ':' _ properties:PropertyList _ comment:Comment? _N { return { type: 'ElementLine', location: location(), name, properties, comment }; }
 
 PropertyList
   = head:(Property / ValueProperty) tail:(_ ',' _ @Property)* { return [head, ...tail]; }
 
 ValueProperty
-  = value:Value { return {type: 'Property', location: location(), name: null, value}; }
+  = value:Value { return { type: 'Property', location: location(), name: null, value }; }
 
 Property
-  = name:Name _ '=' _ value:Value { return {type: 'Property', location: location(), name, value}; }
+  = name:Value _ '=' _ value:Value { return { type: 'Property', location: location(), name, value }; }
 
-Name
-  = value:$([A-Za-z_] [A-Za-z0-9_]*) { return {type: 'Name', location: location(), value}; }
+MacroLine
+  = _ arguments_:MacroArgument|2.., _ ';' _| _ comment:Comment? _N { return { type: 'MacroLine', location: location(), arguments: arguments_, comment }; }
+
+MacroArgument
+  = $(Value / [:,=])|.., _|
 
 Value
   = LiteralValue
@@ -391,20 +390,20 @@ Value
   / ScriptValue
 
 LiteralValue
-  = value:$LiteralChar|1.., _| { return {type: 'LiteralValue', location: location(), value}; }
+  = value:$LiteralChar|1.., _| { return { type: 'LiteralValue', location: location(), value }; }
 
 LiteralChar
   = [^\n\r\t #;:,="`]
 
 QuotedValue
-  = '"' chars:QuotedChar* '"' { return {type: 'QuotedValue', location: location(), value: chars.join('')}; }
+  = '"' chars:QuotedChar* '"' { return { type: 'QuotedValue', location: location(), value: chars.join('') }; }
 
 QuotedChar
   = '\\"' { return '"'; }
   / EscapableChar
 
 ScriptValue
-  = '`' chars:ScriptChar* '`' { return {type: 'ScriptValue', location: location(), script: chars.join('')}; }
+  = '`' chars:ScriptChar* '`' { return { type: 'ScriptValue', location: location(), script: chars.join('') }; }
 
 ScriptChar
   = '\\`' { return '`'; }
