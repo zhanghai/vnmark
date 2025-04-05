@@ -166,11 +166,11 @@ A number of commands can serve as suspension points:
 
 - `: delay duration_millis`: Suspend the execution for a number of milliseconds or until the user skips.
 - `: pause`: Suspend the execution until the user continues, including making a choice.
-- `: wait element_properties`: Suspend the execution until the specified property transitions are completed or the user skips. Other property transitions that started as part of the suspension will keep running. For audio and video elements, both their volume and playback are considered transitions.
-- `: snap element_properties`: Suspend the execution momentarily and snap the specified property transitions to their end values. Other property transitions that started as part of the suspension will keep running. For audio and video elements, both their volume and playback are considered transitions.
+- `: wait element_property, ...`: Suspend the execution until the specified property transitions are completed or the user skips. Other property transitions that started as part of the suspension will keep running. For audio and video elements, both their volume and playback are considered transitions.
+- `: snap element_property, ...`: Suspend the execution momentarily and snap the specified property transitions to their end values. Other property transitions that started as part of the suspension will keep running. For audio and video elements, both their volume and playback are considered transitions.
 - `: set_layout layout_name`: Suspend the execution until the specified layout transition is completed or the user skips. Elements that no longer exists in the new layout will have their `value`s snapped to `none`. Other property transitions that started as part of the suspension will keep running.
 
-For the `wait` and `snap` commands, element properties are specified as a string of comma separated `element.property` pairs, which may be glob patterns. Specifying an element without a property implies all properties of the element.
+For the `wait` and `snap` commands, an element property is specified as a `element.property` pair, which may also be a glob pattern. Specifying an element without a property implies all properties of the element.
 
 In addition, the `skip` command keeps skipping at the next suspension point, if the user skipped at the previous suspension point that allowed them to skip. This can be useful for combining multiple `delay` or `wait` commands to create a single animation.
 
