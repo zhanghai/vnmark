@@ -364,7 +364,7 @@ Comment
   = '#' value:$[^\n]* { return { type: 'Comment', location: location(), value }; }
 
 CommandLine
-  = _ ':' _ name:Value arguments_:(_ @Value|1.., _ ',' _|)? _ comment:Comment? _N { return { type: 'CommandLine', location: location(), name, arguments: arguments_ ?? [], comment }; }
+  = _ ':' _ name:ValueNoWhiteSpace arguments_:(_ @Value|1.., _ ',' _|)? _ comment:Comment? _N { return { type: 'CommandLine', location: location(), name, arguments: arguments_ ?? [], comment }; }
 
 ElementLine
   = _ name:Value _ ':' _ properties:PropertyList _ comment:Comment? _N { return { type: 'ElementLine', location: location(), name, properties, comment }; }
@@ -389,8 +389,16 @@ Value
   / QuotedValue
   / ScriptValue
 
+ValueNoWhiteSpace
+  = LiteralValueNoWhiteSpace
+  / QuotedValue
+  / ScriptValue
+
 LiteralValue
   = value:$LiteralChar|1.., _| { return { type: 'LiteralValue', location: location(), value }; }
+
+LiteralValueNoWhiteSpace
+  = value:$LiteralChar+ { return { type: 'LiteralValue', location: location(), value }; }
 
 LiteralChar
   = [^\n\r\t #;:,="`]
