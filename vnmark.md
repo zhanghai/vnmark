@@ -33,8 +33,6 @@ vnmark: 1.0.0
 Other front-matter values are optional, and common values with example defaut values are described below.
 
 ```yaml
-width: 1280
-height: 720
 macro_line:
   - name: $1
   - avatar: $2
