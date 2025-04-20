@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "lib": [
+      "ES2020",
+      "ES2022.Error",
+      "ES2022.Intl",
+      "DOM",
+      "DOM.Iterable",
+      "DOM.AsyncIterable"
+    ],
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true
+  },
+  "exclude": ["remotion.config.ts"]
+}

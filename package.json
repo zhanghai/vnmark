@@ -1,0 +1,9 @@
+{
+  "name": "@vnmark/monorepo",
+  "version": "0.0.0",
+  "description": "VNMark monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ]
+}

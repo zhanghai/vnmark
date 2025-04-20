@@ -1,0 +1,28 @@
+{
+  "name": "@vnmark/renderer",
+  "version": "0.0.0",
+  "description": "Vnmark Renderer",
+  "dependencies": {
+    "@remotion/cli": "4.0.286",
+    "@vnmark/parser": "^1.1.1",
+    "@vnmark/view": "^1.0.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "remotion": "4.0.286"
+  },
+  "devDependencies": {
+    "@remotion/eslint-config-flat": "4.0.286",
+    "@types/react": "19.0.0",
+    "@types/web": "0.0.166",
+    "eslint": "9.19.0",
+    "prettier": "3.3.3",
+    "typescript": "5.5.4"
+  },
+  "scripts": {
+    "dev": "remotion studio",
+    "build": "remotion bundle",
+    "upgrade": "remotion upgrade",
+    "lint": "eslint src && tsc"
+  },
+  "private": true
+}

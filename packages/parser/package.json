@@ -1,0 +1,32 @@
+{
+  "name": "@vnmark/parser",
+  "version": "1.1.1",
+  "description": "VNMark document parser",
+  "type": "module",
+  "scripts": {
+    "build": "npx peggy -c peggy.config.js",
+    "prepare": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zhanghai/vnmark.git"
+  },
+  "keywords": [
+    "vnmark"
+  ],
+  "author": "Hai Zhang",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/zhanghai/vnmark/issues"
+  },
+  "homepage": "https://github.com/zhanghai/vnmark/tree/master/packages/parser",
+  "devDependencies": {
+    "peggy": "^4.2.0"
+  },
+  "dependencies": {
+    "yaml": "^2.6.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
