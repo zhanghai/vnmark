@@ -24,7 +24,7 @@
     "peggy": "^4.2.0"
   },
   "dependencies": {
-    "yaml": "^2.6.1"
+    "yaml": "^2.7.1"
   },
   "publishConfig": {
     "access": "public"
