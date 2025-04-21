@@ -1,15 +1,27 @@
 import { DOMClock, Engine, View } from '@vnmark/view';
 
 export class Player {
+  private readonly rootElement = document.createElement('div');
   private readonly clock = new DOMClock();
-  readonly view: View;
+  private readonly view: View;
   private readonly abortController = new AbortController();
+  private readonly resizeObserver = new ResizeObserver(() => this.resize());
 
-  constructor(parentElement: HTMLElement, engine: Engine) {
-    this.view = new View(parentElement, engine, this.clock);
+  constructor(
+    private readonly parentElement: HTMLElement,
+    private readonly engine: Engine,
+  ) {
+    this.view = new View(this.rootElement, engine, this.clock);
   }
 
   async init() {
+    const manifest = this.engine.package_.manifest;
+    this.rootElement.style.width = `${manifest.width * manifest.density}px`;
+    this.rootElement.style.height = `${manifest.height * manifest.density}px`;
+    this.rootElement.style.transformOrigin = '0 0';
+    this.resize();
+    this.resizeObserver.observe(this.parentElement);
+
     await this.view.init();
 
     const signal = this.abortController.signal;
@@ -81,6 +93,23 @@ export class Player {
       },
       { signal },
     );
+
+    this.parentElement.appendChild(this.rootElement);
+  }
+
+  private resize() {
+    const parentWidth = this.parentElement.offsetWidth;
+    const parentHeight = this.parentElement.offsetHeight;
+    const manifest = this.engine.package_.manifest;
+    const naturalWidth = manifest.width * manifest.density;
+    const naturalHeight = manifest.height * manifest.density;
+    const scale = Math.min(
+      parentWidth / naturalWidth,
+      parentHeight / naturalHeight,
+    );
+    const translationX = (parentWidth - naturalWidth * scale) / 2;
+    const translationY = (parentHeight - naturalHeight * scale) / 2;
+    this.rootElement.style.transform = `translate(${translationX}px, ${translationY}px) scale(${scale})`;
   }
 
   private continueOrSkipWait() {
@@ -96,6 +125,7 @@ export class Player {
   }
 
   destroy() {
+    this.resizeObserver.disconnect();
     this.abortController.abort();
     this.view.destroy();
     this.clock.destroy();

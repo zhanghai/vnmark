@@ -44,7 +44,7 @@ function App() {
           Load
         </button>
       </div>
-      <div ref={viewRef} />
+      <div ref={viewRef} style={{ width: '100%', height: '100%' }} />
     </>
   );
 }
