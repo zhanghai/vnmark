@@ -1,11 +1,4 @@
 import { parseMedia } from '@remotion/media-parser';
-// @ts-expect-error TS2307
-import { getAbsoluteSrc } from 'remotion/../../../dist/cjs/absolute-src';
-// @ts-expect-error TS2307
-import { getExpectedMediaFrameUncorrected } from 'remotion/../../../dist/cjs/video/get-current-time';
-// @ts-expect-error TS2307
-import { getOffthreadVideoSource } from 'remotion/../../../dist/cjs/video/offthread-video-source';
-import { type RenderAssetManagerContext } from 'remotion/dist/cjs/RenderAssetManager';
 import {
   FrameClock,
   HTMLElements,
@@ -13,7 +6,14 @@ import {
   VideoElementResolvedProperties,
   VideoObject,
   ViewError,
-} from 'vnmark-view';
+} from '@vnmark/view';
+// @ts-expect-error TS2307
+import { getAbsoluteSrc } from 'remotion/../../../dist/cjs/absolute-src';
+// @ts-expect-error TS2307
+import { getExpectedMediaFrameUncorrected } from 'remotion/../../../dist/cjs/video/get-current-time';
+// @ts-expect-error TS2307
+import { getOffthreadVideoSource } from 'remotion/../../../dist/cjs/video/offthread-video-source';
+import { type RenderAssetManagerContext } from 'remotion/dist/cjs/RenderAssetManager';
 
 export class RemotionVideoObject implements VideoObject {
   private image: HTMLImageElement;

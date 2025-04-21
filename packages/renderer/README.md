@@ -1,4 +1,4 @@
-# vnmark-renderer
+# @vnmark/renderer
 
 A VNMark renderer based on Web technologies including [Remotion](https://github.com/remotion-dev/remotion).
 

@@ -1,11 +1,4 @@
-import { produce, WritableDraft } from 'immer';
-import escapeRegExp from 'lodash.escaperegexp';
-import {
-  QuickJSWASMModule,
-  Scope,
-  shouldInterruptAfterDeadline,
-} from 'quickjs-emscripten';
-import * as VnmarkParser from 'vnmark-parser';
+import * as VnmarkParser from '@vnmark/parser';
 import {
   CommandLine,
   Document as ParserDocument,
@@ -17,7 +10,14 @@ import {
   QuotedValue,
   ScriptValue,
   Value,
-} from 'vnmark-parser/vnmark.d';
+} from '@vnmark/parser/vnmark.d';
+import { produce, WritableDraft } from 'immer';
+import escapeRegExp from 'lodash.escaperegexp';
+import {
+  QuickJSWASMModule,
+  Scope,
+  shouldInterruptAfterDeadline,
+} from 'quickjs-emscripten';
 
 import { Package } from '../package';
 import { COMMANDS } from './Command';

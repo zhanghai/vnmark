@@ -1,20 +1,20 @@
-# vnmark-parser
+# @vnmark/parser
 
-[![NPM version](https://img.shields.io/npm/v/vnmark-parser.svg)](https://npmjs.org/package/vnmark-parser)
-[![NPM downloads](https://img.shields.io/npm/dt/vnmark-parser.svg)](https://npmjs.org/package/vnmark-parser)
+[![NPM version](https://img.shields.io/npm/v/@vnmark/parser.svg)](https://npmjs.org/package/@vnmark/parser)
+[![NPM downloads](https://img.shields.io/npm/dt/@vnmark/parser.svg)](https://npmjs.org/package/@vnmark/parser)
 
 A VNMark document parser written with [peggy](https://github.com/peggyjs/peggy).
 
 ## Installation
 
 ```shell
-npm install vnmark-parser
+npm install @vnmark/parser
 ```
 
 ## Usage
 
 ```typescript
-import { parse } from 'vnmark-parser';
+import { parse } from '@vnmark/parser';
 
 const document = parse(input);
 ```

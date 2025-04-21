@@ -1,5 +1,5 @@
+import { Engine, EngineState, FrameClock, Globals, View } from '@vnmark/view';
 import { type RenderAssetManagerContext } from 'remotion/dist/cjs/RenderAssetManager';
-import { Engine, EngineState, FrameClock, Globals, View } from 'vnmark-view';
 
 import { RemotionAudioObject } from './RemotionAudioObject';
 import { RemotionVideoObject } from './RemotionVideoObject';

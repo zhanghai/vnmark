@@ -1,5 +1,6 @@
-import camelCase from 'camelcase';
 import { resolve } from 'node:path';
+
+import camelCase from 'camelcase';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
@@ -9,9 +10,7 @@ const packageName = packageJson.name.split('/').pop() || packageJson.name;
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    dts({ rollupTypes: true }),
-  ],
+  plugins: [dts({ rollupTypes: true })],
   build: {
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),

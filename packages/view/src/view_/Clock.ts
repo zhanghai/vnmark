@@ -32,7 +32,7 @@ export class DOMClock extends Clock {
 
   private readonly timeoutCallbacks = new Map<
     unknown,
-    [number, ClockCallback]
+    [ReturnType<typeof setTimeout>, ClockCallback]
   >();
 
   get time(): number {

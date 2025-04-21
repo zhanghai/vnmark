@@ -1,4 +1,4 @@
-# vnmark-player
+# @vnmark/player
 
 A VNMark player based on Web technologies.
 

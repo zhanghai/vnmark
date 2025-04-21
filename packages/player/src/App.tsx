@@ -1,7 +1,7 @@
 import './App.css';
 
+import { Engine, getQuickJS, HttpPackage, Package } from '@vnmark/view';
 import { useRef } from 'react';
-import { Engine, getQuickJS, HttpPackage, Package } from 'vnmark-view';
 
 import { Player } from './player';
 

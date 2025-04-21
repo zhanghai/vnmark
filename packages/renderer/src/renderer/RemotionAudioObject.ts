@@ -1,14 +1,14 @@
 import { getAudioDurationInSeconds } from '@remotion/media-utils';
-// @ts-expect-error TS2307
-import { getAbsoluteSrc } from 'remotion/../../../dist/cjs/absolute-src';
-import { type RenderAssetManagerContext } from 'remotion/dist/cjs/RenderAssetManager';
 import {
   AudioElementResolvedProperties,
   AudioObject,
   FrameClock,
   RevocableUrl,
   ViewError,
-} from 'vnmark-view';
+} from '@vnmark/view';
+// @ts-expect-error TS2307
+import { getAbsoluteSrc } from 'remotion/../../../dist/cjs/absolute-src';
+import { type RenderAssetManagerContext } from 'remotion/dist/cjs/RenderAssetManager';
 
 export class RemotionAudioObject implements AudioObject {
   private _url!: RevocableUrl;
