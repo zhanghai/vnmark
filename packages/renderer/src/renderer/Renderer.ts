@@ -1,6 +1,7 @@
 import { Engine, EngineState, FrameClock, Globals, View } from '@vnmark/view';
 import { type RenderAssetManagerContext } from 'remotion/dist/cjs/RenderAssetManager';
 
+import { ElementAnimator } from './ElementAnimator';
 import { RemotionAudioObject } from './RemotionAudioObject';
 import { RemotionVideoObject } from './RemotionVideoObject';
 
@@ -20,6 +21,7 @@ export class Renderer {
     context: RenderAssetManagerContext,
   ) {
     this.clock = new FrameClock(fps);
+    const elementAnimator = new ElementAnimator(this.clock);
     this.view = new View(
       parentElement,
       engine,
@@ -32,6 +34,8 @@ export class Renderer {
           this.framePromises,
           context,
         ),
+      (element, keyframes, options) =>
+        elementAnimator.animate(element, keyframes, options),
     );
     this.view.isContinuing = true;
   }

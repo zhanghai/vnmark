@@ -67,6 +67,12 @@ export class View {
       new DOMAudioObject(),
     private readonly newVideoObject: () => VideoObject = () =>
       new DOMVideoObject(),
+    private readonly animateElement: (
+      element: HTMLElement,
+      keyframes: Keyframe[] | PropertyIndexedKeyframes | null,
+      options?: number | KeyframeAnimationOptions,
+    ) => void = (element, keyframes, options) =>
+      element.animate(keyframes, options),
   ) {}
 
   async init() {
@@ -319,7 +325,7 @@ export class View {
         const animateArguments = this.engine.evaluateScript(scriptAnimate);
         if (animateArguments) {
           // @ts-expect-error TS2556
-          element.animate(...animateArguments);
+          this.animateElement(element, ...animateArguments);
         }
       }
       const scriptStyle = element.dataset.scriptStyle;
