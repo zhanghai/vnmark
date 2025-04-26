@@ -44,7 +44,7 @@ export class Renderer {
     await this.view.init();
     // noinspection ES6MissingAwait
     this.engine.execute(engineState);
-    await Globals.delay();
+    await this.nextFrame(true);
   }
 
   get frame() {
@@ -73,7 +73,7 @@ export class Renderer {
     }
   }
 
-  private async nextFrame(): Promise<boolean> {
+  private async nextFrame(isInit: boolean = false): Promise<boolean> {
     while (true) {
       const engineStatus = this.engine.status;
       switch (engineStatus.type) {
@@ -96,6 +96,9 @@ export class Renderer {
               await Globals.delay();
               break;
             case 'waiting': {
+              if (isInit) {
+                return true;
+              }
               this.clock.nextFrame();
               await Globals.delay();
               if (this.framePromises.length) {
