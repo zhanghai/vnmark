@@ -20,7 +20,6 @@ export class RemotionVideoObject implements VideoObject {
 
   private _url!: RevocableUrl;
   private assetId!: string;
-  private durationInMillis!: number;
   private durationInFrames!: number;
 
   private startFrame!: number;
@@ -62,7 +61,6 @@ export class RemotionVideoObject implements VideoObject {
         acknowledgeRemotionLicense: true,
       })
     ).slowDurationInSeconds;
-    this.durationInMillis = durationInSeconds * 1000;
     this.durationInFrames = Math.ceil(durationInSeconds * this.clock.fps);
   }
 
@@ -95,7 +93,10 @@ export class RemotionVideoObject implements VideoObject {
     if (this.loop || !this.isPlaying) {
       return Promise.resolve();
     }
-    return this.clock.createTimeoutPromise(this.durationInMillis);
+    const endFrame = this.startFrame + this.durationInFrames;
+    const remainingFrames = Math.max(0, endFrame - this.clock.frame);
+    const remainingMillis = (remainingFrames / this.clock.fps) * 1000;
+    return this.clock.createTimeoutPromise(remainingMillis);
   }
 
   snapPlayback() {

@@ -13,7 +13,6 @@ import { type RenderAssetManagerContext } from 'remotion/dist/cjs/RenderAssetMan
 export class RemotionAudioObject implements AudioObject {
   private _url!: RevocableUrl;
   private assetId!: string;
-  private durationInMillis!: number;
   private durationInFrames!: number;
 
   private startFrame!: number;
@@ -41,7 +40,6 @@ export class RemotionAudioObject implements AudioObject {
     this._url = url;
     this.assetId = `audio-${url.value}-${this.clock.frame}`;
     const durationInSeconds = await getAudioDurationInSeconds(url.value);
-    this.durationInMillis = durationInSeconds * 1000;
     this.durationInFrames = Math.ceil(durationInSeconds * this.clock.fps);
   }
 
@@ -69,7 +67,10 @@ export class RemotionAudioObject implements AudioObject {
     if (this.loop || !this.isPlaying) {
       return Promise.resolve();
     }
-    return this.clock.createTimeoutPromise(this.durationInMillis);
+    const endFrame = this.startFrame + this.durationInFrames;
+    const remainingFrames = Math.max(0, endFrame - this.clock.frame);
+    const remainingMillis = (remainingFrames / this.clock.fps) * 1000;
+    return this.clock.createTimeoutPromise(remainingMillis);
   }
 
   snapPlayback() {
