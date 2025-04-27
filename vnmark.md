@@ -150,7 +150,7 @@ A video element has at least the following properties, in addition to those of a
 
 ## Layout
 
-The `set_layout` and `snap_layout` commands set the current layout, which offer an opaque way to control the styling and position of certain elements and general game UI. The default layout is `none`.
+The `set_layout` or `snap_layout` command sets the current layout, which offers an opaque way to control the styling and position of certain elements and general game UI. The default layout is `none`.
 
 Common layouts include `none` (images only), `dialogue`, `introduction`, `monologue`, `video`, `choice`, etc. A specific visual novel engine may offer its own layouts tailored to a specific visual novel, and a layout change may have engine defined transitions as well as side effects on certain elements (e.g. setting choice elements to `none` upon leaving choice layout).
 
