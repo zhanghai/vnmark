@@ -181,10 +181,11 @@ export interface EngineState {
 export type ViewUpdater = (options: UpdateViewOptions) => Promise<boolean>;
 
 export type UpdateViewOptions =
+  | { type: 'delay'; durationMillis: number }
   | { type: 'pause' }
   | { type: 'set_layout'; layoutName: string }
-  | { type: 'delay'; durationMillis: number }
   | { type: 'snap'; elementPropertyMatcher: ElementPropertyMatcher }
+  | { type: 'snap_layout'; layoutName: string }
   | { type: 'wait'; elementPropertyMatcher: ElementPropertyMatcher };
 
 export class Engine {

@@ -141,6 +141,42 @@ export class Layout {
     return this.layoutTypeTemplateElements.get(layoutName)?.get(elementType);
   }
 
+  set(layoutName: string): ElementType[] {
+    if (!this.layoutNames.includes(layoutName)) {
+      throw new ViewError(`Unknown layout "${layoutName}"`);
+    }
+
+    const oldLayoutName = this.layoutName;
+    const newLayoutName = layoutName;
+    this.layoutName = layoutName;
+
+    if (oldLayoutName === newLayoutName) {
+      return [];
+    }
+
+    for (const [element, layoutNames] of this.elementLayouts) {
+      const isInOldLayout = layoutNames.includes(oldLayoutName);
+      const isInNewLayout = layoutNames.includes(newLayoutName);
+      if (isInOldLayout === isInNewLayout) {
+        continue;
+      }
+      HTMLElements.setOpacity(element, isInNewLayout ? 1 : 0);
+    }
+
+    const exitElementTypes = new Set<ElementType>();
+    const oldTypeElements = this.layoutTypeContainerElements.get(oldLayoutName);
+    const newTypeElements = this.layoutTypeContainerElements.get(newLayoutName);
+    if (oldTypeElements) {
+      for (const [elementType, oldElement] of oldTypeElements) {
+        const newElement = newTypeElements?.get(elementType);
+        if (oldElement !== newElement) {
+          exitElementTypes.add(elementType);
+        }
+      }
+    }
+    return Array.from(exitElementTypes).sort();
+  }
+
   *transition(layoutName: string): Generator<ElementType[], void, void> {
     if (!this.layoutNames.includes(layoutName)) {
       throw new ViewError(`Unknown layout "${layoutName}"`);

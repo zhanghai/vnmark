@@ -335,6 +335,11 @@ export class View {
     }
 
     switch (options.type) {
+      case 'delay': {
+        return this.waitOrSkip(
+          this.clock.createTimeoutPromise(options.durationMillis),
+        ).then(() => true);
+      }
       case 'pause': {
         const choiceElements = Object.entries(elementPropertiesMap)
           .filter(
@@ -435,11 +440,6 @@ export class View {
           })
           .then(() => true);
       }
-      case 'delay': {
-        return this.waitOrSkip(
-          this.clock.createTimeoutPromise(options.durationMillis),
-        ).then(() => true);
-      }
       case 'snap':
         for (const [elementName, element] of this.elements) {
           element.snap(
@@ -447,6 +447,22 @@ export class View {
           );
         }
         return true;
+      case 'snap_layout': {
+        const newLayoutName = options.layoutName;
+        this.engine.setLayout(newLayoutName);
+        const exitElementTypes = this.layout.set(newLayoutName);
+        for (const elementType of exitElementTypes) {
+          const elementNames = this.typeElementNames.get(elementType) ?? [];
+          for (const elementName of elementNames) {
+            this.engine.removeElement(elementName);
+            const element = this.elements.get(elementName)!;
+            element.destroy();
+            this.elements.delete(elementName);
+          }
+          this.typeElementNames.delete(elementType);
+        }
+        return true;
+      }
       case 'wait':
         return this.waitOrSkip(
           Promise.all(

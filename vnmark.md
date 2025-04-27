@@ -150,7 +150,7 @@ A video element has at least the following properties, in addition to those of a
 
 ## Layout
 
-The `set_layout` command sets the current layout, which offers an opaque way to control the styling and position of certain elements and general game UI. The default layout is `none`.
+The `set_layout` and `snap_layout` commands set the current layout, which offer an opaque way to control the styling and position of certain elements and general game UI. The default layout is `none`.
 
 Common layouts include `none` (images only), `dialogue`, `introduction`, `monologue`, `video`, `choice`, etc. A specific visual novel engine may offer its own layouts tailored to a specific visual novel, and a layout change may have engine defined transitions as well as side effects on certain elements (e.g. setting choice elements to `none` upon leaving choice layout).
 
@@ -167,6 +167,7 @@ A number of commands can serve as suspension points:
 - `: wait element_property, ...`: Suspend the execution until the specified property transitions are completed or the user skips. Other property transitions that started as part of the suspension will keep running. For audio and video elements, both their volume and playback are considered transitions.
 - `: snap element_property, ...`: Suspend the execution momentarily and snap the specified property transitions to their end values. Other property transitions that started as part of the suspension will keep running. For audio and video elements, both their volume and playback are considered transitions.
 - `: set_layout layout_name`: Suspend the execution until the specified layout transition is completed or the user skips. Elements that no longer exists in the new layout will have their `value`s snapped to `none`. Other property transitions that started as part of the suspension will keep running.
+- `: snap_layout layout_name`: Suspend the execution momentarily and snaps to the specified layout. Elements that no longer exists in the new layout will have their `value`s snapped to `none`. Other property transitions that started as part of the suspension will keep running.
 
 For the `wait` and `snap` commands, an element property is specified as a `element.property` pair, which may also be a glob pattern. Specifying an element without a property implies all properties of the element.
 

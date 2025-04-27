@@ -187,6 +187,14 @@ const COMMAND_ARRAY: Command[] = [
     },
   },
   {
+    name: 'snap_layout',
+    argumentCount: 1,
+    async execute(engine, arguments_): Promise<boolean> {
+      const [layoutName] = arguments_;
+      return await engine.updateView({ type: 'snap_layout', layoutName });
+    },
+  },
+  {
     name: 'wait',
     argumentCount: it => it > 0,
     async execute(engine, arguments_) {
