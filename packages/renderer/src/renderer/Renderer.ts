@@ -5,11 +5,15 @@ import { ElementAnimator } from './ElementAnimator';
 import { RemotionAudioObject } from './RemotionAudioObject';
 import { RemotionVideoObject } from './RemotionVideoObject';
 
+const CHOICE_DURATION = 3000;
+
 export class Renderer {
   private readonly clock: FrameClock;
   readonly view: View;
 
   private readonly framePromises: Promise<void>[] = [];
+
+  private choiceEndFrame: number | undefined;
   private nextChoiceIndex = 0;
 
   constructor(
@@ -68,8 +72,9 @@ export class Renderer {
       return;
     }
     while (this.clock.frame < frame && (await this.nextFrame())) {
-      // Do nothing.
-      console.log(`Time: ${this.clock.frame / this.clock.fps}s`);
+      if (this.clock.frame % this.clock.fps === 0) {
+        console.log(`Time: ${this.clock.frame / this.clock.fps}s`);
+      }
     }
   }
 
@@ -82,34 +87,35 @@ export class Renderer {
         case 'loading':
           await engineStatus.promise;
           await Globals.delay();
-          break;
+          continue;
         case 'updating': {
           const viewStatus = this.view.status;
           switch (viewStatus.type) {
             case 'loading':
               await viewStatus.promise;
               await Globals.delay();
-              break;
+              continue;
             case 'choice':
-              viewStatus.select(this.choiceIndices[this.nextChoiceIndex]);
-              ++this.nextChoiceIndex;
-              await Globals.delay();
-              break;
-            case 'waiting': {
+              if (this.choiceEndFrame === undefined) {
+                this.choiceEndFrame =
+                  this.frame + (CHOICE_DURATION / 1000) * this.clock.fps;
+              }
+              if (this.frame >= this.choiceEndFrame) {
+                this.choiceEndFrame = undefined;
+                viewStatus.select(this.choiceIndices[this.nextChoiceIndex]);
+                ++this.nextChoiceIndex;
+                await Globals.delay();
+                continue;
+              }
               if (isInit) {
                 return true;
               }
-              this.clock.nextFrame();
-              await Globals.delay();
-              if (this.framePromises.length) {
-                await Promise.all(this.framePromises);
-                this.framePromises.length = 0;
+              break;
+            case 'waiting':
+              if (isInit) {
+                return true;
               }
-              if (this.clock.frame % this.clock.fps === 0) {
-                console.log(`Time: ${this.clock.frame / this.clock.fps}s`);
-              }
-              return true;
-            }
+              break;
             default:
               throw new Error(
                 `Unexpected view status type "${viewStatus.type}"`,
@@ -122,7 +128,19 @@ export class Renderer {
             `Unexpected engine status type "${engineStatus.type}"`,
           );
       }
+      break;
     }
+
+    this.clock.nextFrame();
+    await Globals.delay();
+    if (this.framePromises.length) {
+      await Promise.all(this.framePromises);
+      this.framePromises.length = 0;
+    }
+    if (this.clock.frame % this.clock.fps === 0) {
+      console.log(`Time: ${this.clock.frame / this.clock.fps}s`);
+    }
+    return true;
   }
 
   destroy() {
