@@ -13,8 +13,6 @@ export class ChoiceObject {
   private _value = 1;
   private _enabled = true;
   script = '';
-  private _visited = false;
-  private _selected = false;
 
   constructor(template: HTMLElement, text: string) {
     this.element = template.cloneNode(true) as HTMLButtonElement;
@@ -67,20 +65,18 @@ export class ChoiceObject {
   }
 
   get visited(): boolean {
-    return this._visited;
+    return this.element.classList.contains('visited');
   }
 
   set visited(value: boolean) {
-    this._visited = value;
     this.element.classList.toggle('visited', value);
   }
 
   get selected(): boolean {
-    return this._selected;
+    return this.element.classList.contains('selected');
   }
 
   set selected(value: boolean) {
-    this._selected = value;
     this.element.classList.toggle('selected', value);
   }
 

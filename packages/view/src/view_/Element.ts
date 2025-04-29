@@ -543,7 +543,7 @@ export class ChoiceElement extends BaseElement<
     super(clock, false);
   }
 
-  getScript(): string {
+  get script(): string {
     return this.object?.script ?? '';
   }
 

@@ -358,7 +358,7 @@ export class View {
                   return false;
                 }
                 this._status = { type: 'ready' };
-                this.engine.evaluateScript(choiceElement.getScript());
+                this.engine.evaluateScript(choiceElement.script);
                 resolve();
                 return true;
               });
