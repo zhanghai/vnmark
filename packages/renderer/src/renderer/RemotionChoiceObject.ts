@@ -1,53 +1,17 @@
+import {
+  AnimateElement,
+  ChoiceElementResolvedProperties,
+  ChoiceObject,
+  FrameClock,
+  HTMLElements,
+  Package,
+  ViewError,
+} from '@vnmark/view';
 import DOMPurity from 'dompurify';
+import { type RenderAssetManagerContext } from 'remotion/dist/cjs/RenderAssetManager';
+import { RemotionAudio } from './RemotionMedia';
 
-import { Package, RevocableUrl } from '../package';
-import { Howls, HTMLElements } from '../util';
-import { ChoiceElementResolvedProperties } from './ElementResolvedProperties';
-import { AnimateElement, ViewError } from './View';
-
-export type NewChoiceObject = (
-  template: HTMLElement,
-  animateElement: AnimateElement,
-) => ChoiceObject;
-
-export interface ChoiceObject {
-  onSelect: (() => void) | undefined;
-
-  load(package_: Package, text: string): Promise<void>;
-
-  destroy(): void;
-
-  attach(parentElement: HTMLElement, order: number): void;
-
-  detach(): void;
-
-  select(): void;
-
-  waitOnSelectAnimation(): Promise<void>;
-
-  value: number;
-
-  enabled: boolean;
-
-  script: string;
-
-  visited: boolean;
-
-  highlighted: boolean;
-
-  selected: boolean;
-
-  getPropertyValue(
-    propertyName: keyof ChoiceElementResolvedProperties,
-  ): ChoiceElementResolvedProperties[keyof ChoiceElementResolvedProperties];
-
-  setPropertyValue(
-    propertyName: keyof ChoiceElementResolvedProperties,
-    propertyValue: ChoiceElementResolvedProperties[keyof ChoiceElementResolvedProperties],
-  ): void;
-}
-
-export class DOMChoiceObject implements ChoiceObject {
+export class RemotionChoiceObject implements ChoiceObject {
   private readonly element: HTMLButtonElement;
   private readonly textElement: HTMLElement;
   private readonly onSelectAnimateElements = new Map<
@@ -55,10 +19,8 @@ export class DOMChoiceObject implements ChoiceObject {
     Parameters<HTMLElement['animate']>
   >();
   private onSelectAnimatePromise: Promise<void> | undefined;
-  private onHighlightAudioUrl: RevocableUrl | undefined;
-  private onHighlightHowl: Howl | undefined;
-  private onSelectAudioUrl: RevocableUrl | undefined;
-  private onSelectHowl: Howl | undefined;
+  private onHighlightAudio: RemotionAudio | undefined;
+  private onSelectAudio: RemotionAudio | undefined;
 
   onSelect: (() => void) | undefined;
 
@@ -66,7 +28,13 @@ export class DOMChoiceObject implements ChoiceObject {
   private _enabled = true;
   script = '';
 
-  constructor(template: HTMLElement, animateElement: AnimateElement) {
+  constructor(
+    template: HTMLElement,
+    private readonly animateElement: AnimateElement,
+    private readonly clock: FrameClock,
+    private readonly isDryRun: boolean,
+    private readonly assetContext: RenderAssetManagerContext,
+  ) {
     this.element = template.cloneNode(true) as HTMLButtonElement;
     HTMLElements.forEachDescendant(this.element, element => {
       const onSelectAnimate = element.dataset.onSelectAnimate;
@@ -75,31 +43,6 @@ export class DOMChoiceObject implements ChoiceObject {
         this.onSelectAnimateElements.set(element, animateArguments);
       }
       return true;
-    });
-    this.element.addEventListener('mouseenter', () => {
-      if (!(this.enabled && this.onSelect)) {
-        return;
-      }
-      this.onHighlightHowl?.stop()?.play();
-    });
-    this.element.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!(this.enabled && this.onSelect)) {
-        return;
-      }
-      this.selected = true;
-      const onSelectAnimatePromises: Promise<void>[] = [];
-      for (const [element, animateArguments] of this.onSelectAnimateElements) {
-        onSelectAnimatePromises.push(
-          animateElement(element, ...animateArguments),
-        );
-      }
-      this.onSelectAnimatePromise = Promise.all(onSelectAnimatePromises).then(
-        () => {},
-      );
-      this.onSelectHowl?.play();
-      this.onSelect();
     });
     const textElement = HTMLElements.firstDescendantOrUndefined(
       this.element,
@@ -119,14 +62,12 @@ export class DOMChoiceObject implements ChoiceObject {
       this.loadAudio(
         package_,
         this.element.dataset.onHighlightAudio,
-        it => (this.onHighlightAudioUrl = it),
-        it => (this.onHighlightHowl = it),
+        it => (this.onHighlightAudio = it),
       ),
       this.loadAudio(
         package_,
         this.element.dataset.onSelectAudio,
-        it => (this.onSelectAudioUrl = it),
-        it => (this.onSelectHowl = it),
+        it => (this.onSelectAudio = it),
       ),
     ]).then(() => {});
   }
@@ -134,24 +75,29 @@ export class DOMChoiceObject implements ChoiceObject {
   private async loadAudio(
     package_: Package,
     name: string | undefined,
-    onUrl: (url: RevocableUrl) => void,
-    onHowl: (howl: Howl) => void,
+    onAudioLoaded: (audio: RemotionAudio) => void,
   ) {
     if (!name) {
       return;
     }
+    const audio = new RemotionAudio(
+      this.clock,
+      this.isDryRun,
+      this.assetContext,
+    );
     const url = await package_.getUrl('template', name);
-    onUrl(url);
-    const howl = Howls.create(url.value);
-    onHowl(howl);
-    await Howls.load(howl);
+    try {
+      await audio.load(url);
+    } catch (e) {
+      url.revoke();
+      throw e;
+    }
+    onAudioLoaded(audio);
   }
 
   destroy() {
-    this.onHighlightHowl?.unload();
-    this.onHighlightAudioUrl?.revoke();
-    this.onSelectHowl?.unload();
-    this.onSelectAudioUrl?.revoke();
+    this.onHighlightAudio?.url.revoke();
+    this.onSelectAudio?.url.revoke();
   }
 
   attach(parentElement: HTMLElement, order: number) {
@@ -163,7 +109,21 @@ export class DOMChoiceObject implements ChoiceObject {
   }
 
   select() {
-    this.element.click();
+    if (!(this.enabled && this.onSelect)) {
+      return;
+    }
+    this.selected = true;
+    const onSelectAnimatePromises: Promise<void>[] = [];
+    for (const [element, animateArguments] of this.onSelectAnimateElements) {
+      onSelectAnimatePromises.push(
+        this.animateElement(element, ...animateArguments),
+      );
+    }
+    this.onSelectAnimatePromise = Promise.all(onSelectAnimatePromises).then(
+      () => {},
+    );
+    this.onSelectAudio?.play();
+    this.onSelect();
   }
 
   waitOnSelectAnimation(): Promise<void> {
@@ -203,8 +163,10 @@ export class DOMChoiceObject implements ChoiceObject {
   set highlighted(value: boolean) {
     const changedToHighlighted = !this.highlighted && value;
     this.element.classList.toggle('highlighted', value);
-    if (changedToHighlighted && this.onHighlightHowl) {
-      this.onHighlightHowl.stop().play();
+    if (changedToHighlighted) {
+      if (this.enabled && this.onSelect) {
+        this.onHighlightAudio?.play();
+      }
     }
   }
 

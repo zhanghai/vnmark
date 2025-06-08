@@ -1,4 +1,3 @@
-import { getAudioDurationInSeconds } from '@remotion/media-utils';
 import {
   AudioElementResolvedProperties,
   AudioObject,
@@ -6,111 +5,53 @@ import {
   RevocableUrl,
   ViewError,
 } from '@vnmark/view';
-// @ts-expect-error TS2307
-import { getAbsoluteSrc } from 'remotion/../../../dist/cjs/absolute-src';
 import { type RenderAssetManagerContext } from 'remotion/dist/cjs/RenderAssetManager';
+import { RemotionAudio } from './RemotionMedia';
 
 export class RemotionAudioObject implements AudioObject {
-  private _url!: RevocableUrl;
-  private assetId!: string;
-  private durationInFrames!: number;
-
-  private startFrame!: number;
-  private isStopped = false;
+  private audio: RemotionAudio;
 
   private _valueVolume = 1;
   private _propertyVolume = 1;
-  private _volume = 1;
-  loop = false;
 
   constructor(
-    private readonly clock: FrameClock,
-    private readonly isDryRun: boolean,
-    private readonly assetContext: RenderAssetManagerContext,
-  ) {}
+    clock: FrameClock,
+    isDryRun: boolean,
+    assetContext: RenderAssetManagerContext,
+  ) {
+    this.audio = new RemotionAudio(clock, isDryRun, assetContext);
+  }
 
   get url(): RevocableUrl {
-    return this._url;
+    return this.audio.url;
   }
 
-  async load(url: RevocableUrl) {
-    if (this._url) {
-      throw new ViewError('Cannot reload an audio object');
-    }
-    this._url = url;
-    this.assetId = `audio-${url.value}-${this.clock.frame}`;
-    const durationInSeconds = await getAudioDurationInSeconds(url.value);
-    this.durationInFrames = Math.ceil(durationInSeconds * this.clock.fps);
+  load(url: RevocableUrl): Promise<void> {
+    return this.audio.load(url);
   }
 
-  destroy() {}
+  destroy() {
+    this.audio.destroy();
+  }
 
   attach() {
-    this.startFrame = this.clock.frame;
-    this.registerAsset();
-    this.clock.addFrameCallback(this, () => this.updateAsset());
+    this.audio.play();
   }
 
   detach() {
-    this.isStopped = true;
-    this.clock.removeFrameCallback(this);
-    this.unregisterAsset();
+    this.audio.stop();
   }
 
   get isPlaying(): boolean {
-    const isFirstPlayback =
-      this.clock.frame - this.startFrame < this.durationInFrames;
-    return !this.isStopped && (this.loop || isFirstPlayback);
+    return this.audio.isPlaying;
   }
 
   createPlaybackPromise(): Promise<void> {
-    if (this.loop || !this.isPlaying) {
-      return Promise.resolve();
-    }
-    const endFrame = this.startFrame + this.durationInFrames;
-    const remainingFrames = Math.max(0, endFrame - this.clock.frame);
-    const remainingMillis = (remainingFrames / this.clock.fps) * 1000;
-    return this.clock.createTimeoutPromise(remainingMillis);
+    return this.audio.createPlaybackPromise();
   }
 
   snapPlayback() {
-    this.isStopped = true;
-    this.unregisterAsset();
-  }
-
-  private registerAsset() {
-    if (this.isDryRun) {
-      return;
-    }
-    this.assetContext.registerRenderAsset({
-      type: 'audio',
-      src: getAbsoluteSrc(this._url.value),
-      id: this.assetId,
-      frame: this.clock.frame,
-      volume: this._volume,
-      mediaFrame: this.mediaFrame,
-      playbackRate: 1,
-      toneFrequency: null,
-      audioStartFrame: 0,
-    });
-  }
-
-  private get mediaFrame(): number {
-    return (this.clock.frame - this.startFrame) % this.durationInFrames;
-  }
-
-  private unregisterAsset() {
-    if (this.isDryRun) {
-      return;
-    }
-    this.assetContext.unregisterRenderAsset(this.assetId);
-  }
-
-  private updateAsset() {
-    this.unregisterAsset();
-    if (this.isPlaying) {
-      this.registerAsset();
-    }
+    this.audio.stop();
   }
 
   get valueVolume(): number {
@@ -132,15 +73,15 @@ export class RemotionAudioObject implements AudioObject {
   }
 
   private updateVolume() {
-    this.volume = this._valueVolume * this._propertyVolume;
+    this.audio.volume = this._valueVolume * this._propertyVolume;
   }
 
-  private set volume(value: number) {
-    if (this._volume === value) {
-      return;
-    }
-    this._volume = value;
-    this.updateAsset();
+  get loop(): boolean {
+    return this.audio.loop;
+  }
+
+  set loop(value: boolean) {
+    this.audio.loop = value;
   }
 
   getPropertyValue(

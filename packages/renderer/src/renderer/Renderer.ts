@@ -3,9 +3,11 @@ import { type RenderAssetManagerContext } from 'remotion/dist/cjs/RenderAssetMan
 
 import { ElementAnimator } from './ElementAnimator';
 import { RemotionAudioObject } from './RemotionAudioObject';
+import { RemotionChoiceObject } from './RemotionChoiceObject';
 import { RemotionVideoObject } from './RemotionVideoObject';
 
-const CHOICE_DURATION = 3000;
+const CHOICE_HIGHLIGHT_DURATION_MILLIS = 1500;
+const CHOICE_SELECT_DURATION_MILLIS = 1000;
 
 export class Renderer {
   private readonly clock: FrameClock;
@@ -13,7 +15,8 @@ export class Renderer {
 
   private readonly framePromises: Promise<void>[] = [];
 
-  private choiceEndFrame: number | undefined;
+  private choiceHighlightFrame: number | undefined;
+  private choiceSelectFrame: number | undefined;
   private nextChoiceIndex = 0;
 
   constructor(
@@ -38,8 +41,9 @@ export class Renderer {
           this.framePromises,
           context,
         ),
-      (element, keyframes, options) =>
-        elementAnimator.animate(element, keyframes, options),
+      (...arguments_) =>
+        new RemotionChoiceObject(...arguments_, this.clock, isDryRun, context),
+      (...arguments_) => elementAnimator.animate(...arguments_),
     );
     this.view.isContinuing = true;
   }
@@ -96,12 +100,28 @@ export class Renderer {
               await Globals.delay();
               continue;
             case 'choice':
-              if (this.choiceEndFrame === undefined) {
-                this.choiceEndFrame =
-                  this.frame + (CHOICE_DURATION / 1000) * this.clock.fps;
+              if (this.choiceSelectFrame === undefined) {
+                this.choiceHighlightFrame =
+                  this.frame +
+                  (CHOICE_HIGHLIGHT_DURATION_MILLIS / 1000) * this.clock.fps;
+                this.choiceSelectFrame =
+                  this.choiceHighlightFrame! +
+                  (CHOICE_SELECT_DURATION_MILLIS / 1000) * this.clock.fps;
               }
-              if (this.frame >= this.choiceEndFrame) {
-                this.choiceEndFrame = undefined;
+              if (
+                this.choiceHighlightFrame !== undefined &&
+                this.frame >= this.choiceHighlightFrame
+              ) {
+                this.choiceHighlightFrame = undefined;
+                viewStatus.highlight(this.choiceIndices[this.nextChoiceIndex]);
+                await Globals.delay();
+                continue;
+              }
+              if (
+                this.choiceSelectFrame !== undefined &&
+                this.frame >= this.choiceSelectFrame
+              ) {
+                this.choiceSelectFrame = undefined;
                 viewStatus.select(this.choiceIndices[this.nextChoiceIndex]);
                 ++this.nextChoiceIndex;
                 await Globals.delay();

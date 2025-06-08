@@ -14,7 +14,7 @@ import { Package } from '../package';
 import { CssEasings, Easing, LinearEasing, Transition } from '../transition';
 import { HTMLElements } from '../util';
 import { AudioObject, DOMAudioObject } from './AudioObject';
-import { ChoiceObject } from './ChoiceObject';
+import { ChoiceObject, DOMChoiceObject, NewChoiceObject } from './ChoiceObject';
 import { Clock } from './Clock';
 import { EffectObject } from './EffectObject';
 import {
@@ -31,7 +31,7 @@ import {
 import { ImageObject } from './ImageObject';
 import { TextObject } from './TextObject';
 import { DOMVideoObject, VideoObject } from './VideoObject';
-import { ViewError } from './View';
+import { AnimateElement, ViewError } from './View';
 
 export interface Element<Properties extends ElementProperties, Options> {
   transition(
@@ -533,12 +533,14 @@ export class ChoiceElement extends BaseElement<
   unknown
 > {
   constructor(
-    // @ts-expect-error TS6138
     private readonly package_: Package,
     private readonly container: HTMLElement,
     private readonly index: number,
     private readonly template: HTMLElement,
+    private readonly animateElement: AnimateElement,
     clock: Clock,
+    private readonly newObject: NewChoiceObject = (...arguments_) =>
+      new DOMChoiceObject(...arguments_),
   ) {
     super(clock, false);
   }
@@ -547,14 +549,24 @@ export class ChoiceElement extends BaseElement<
     return this.object?.script ?? '';
   }
 
-  setOnSelect(onSelect: (() => boolean) | undefined) {
+  setHighlighted(highlighted: boolean) {
+    if (this.object) {
+      this.object.highlighted = highlighted;
+    }
+  }
+
+  setOnSelect(onSelect: (() => void) | undefined) {
     if (this.object) {
       this.object.onSelect = onSelect;
     }
   }
 
+  waitOnSelectAnimation(): Promise<void> {
+    return this.object?.waitOnSelectAnimation() ?? Promise.resolve();
+  }
+
   select() {
-    this.object?.element.click();
+    this.object?.select();
   }
 
   protected resolveProperties(
@@ -572,17 +584,21 @@ export class ChoiceElement extends BaseElement<
     _type: string,
     value: string,
   ): Promise<ChoiceObject> {
-    return new ChoiceObject(this.template, value);
+    const object = this.newObject(this.template, this.animateElement);
+    await object.load(this.package_, value);
+    return object;
   }
 
-  protected destroyObject(_object: ChoiceObject) {}
+  protected destroyObject(object: ChoiceObject) {
+    object.destroy();
+  }
 
   protected attachObject(object: ChoiceObject) {
-    HTMLElements.insertWithOrder(this.container, this.index, object.element);
+    object.attach(this.container, this.index);
   }
 
   protected detachObject(object: ChoiceObject) {
-    object.element.remove();
+    object.detach();
   }
 
   protected getPropertyValue(

@@ -10,6 +10,7 @@ import {
 } from '../engine';
 import { HTMLElements, Numbers } from '../util';
 import { AudioObject, DOMAudioObject } from './AudioObject';
+import { DOMChoiceObject, NewChoiceObject } from './ChoiceObject';
 import { Clock } from './Clock';
 import {
   AudioElement,
@@ -36,15 +37,34 @@ export type ViewStatus =
   | { type: 'ready' }
   | { type: 'loading'; promise: Promise<void> }
   | { type: 'paused'; continue: () => void }
-  | { type: 'choice'; select: (index: number) => void }
+  | {
+      type: 'choice';
+      highlight: (index: number) => void;
+      select: (index: number) => void;
+    }
   | { type: 'waiting'; skip: () => void };
 
-const CONTINUE_DURATION = 1500;
+export type AnimateElement = (
+  element: HTMLElement,
+  ...animateArguments: Parameters<HTMLElement['animate']>
+) => Promise<void>;
+
+function domAnimateElement(
+  element: HTMLElement,
+  ...animateArguments: Parameters<HTMLElement['animate']>
+): Promise<void> {
+  const animation = element.animate(...animateArguments);
+  return new Promise<void>(resolve => {
+    animation.onfinish = () => resolve();
+  });
+}
+
+const CONTINUE_DURATION_MILLIS = 1500;
 
 export class View {
   private readonly rootElement = document.createElement('div');
 
-  private readonly scriptElements: HTMLElement[] = [];
+  private readonly onSuspendElements: HTMLElement[] = [];
 
   private layout!: Layout;
   private readonly elements = new Map<
@@ -67,12 +87,9 @@ export class View {
       new DOMAudioObject(),
     private readonly newVideoObject: () => VideoObject = () =>
       new DOMVideoObject(),
-    private readonly animateElement: (
-      element: HTMLElement,
-      keyframes: Keyframe[] | PropertyIndexedKeyframes | null,
-      options?: number | KeyframeAnimationOptions,
-    ) => void = (element, keyframes, options) =>
-      element.animate(keyframes, options),
+    private readonly newChoiceObject: NewChoiceObject = (...arguments_) =>
+      new DOMChoiceObject(...arguments_),
+    private readonly animateElement: AnimateElement = domAnimateElement,
   ) {}
 
   async init() {
@@ -113,24 +130,12 @@ export class View {
             }),
           );
         }
-      } else if (element instanceof HTMLAudioElement) {
-        const src = element.dataset.src;
-        if (src) {
-          promises.push(
-            package_.getBlob('template', src).then(async blob => {
-              const blobUrl = URL.createObjectURL(blob);
-              try {
-                await HTMLElements.audioDecode(element, blobUrl);
-              } catch (e) {
-                URL.revokeObjectURL(blobUrl);
-                throw e;
-              }
-            }),
-          );
-        }
       }
-      if (element.dataset.scriptAnimate || element.dataset.scriptStyle) {
-        this.scriptElements.push(element);
+      if (
+        element.dataset.onSuspendAnimateScript ||
+        element.dataset.onSuspendStyleScript
+      ) {
+        this.onSuspendElements.push(element);
       }
       return true;
     });
@@ -215,7 +220,9 @@ export class View {
                 containerElement,
                 elementProperties.index,
                 templateElement,
+                this.animateElement,
                 this.clock,
+                this.newChoiceObject,
               );
             }
             break;
@@ -319,18 +326,19 @@ export class View {
       }
     });
 
-    for (const element of this.scriptElements) {
-      const scriptAnimate = element.dataset.scriptAnimate;
-      if (scriptAnimate) {
-        const animateArguments = this.engine.evaluateScript(scriptAnimate);
+    for (const element of this.onSuspendElements) {
+      const animateScript = element.dataset.onSuspendAnimateScript;
+      if (animateScript) {
+        const animateArguments = this.engine.evaluateScript(
+          animateScript,
+        ) as Parameters<HTMLElement['animate']>;
         if (animateArguments) {
-          // @ts-expect-error TS2556
           this.animateElement(element, ...animateArguments);
         }
       }
-      const scriptStyle = element.dataset.scriptStyle;
-      if (scriptStyle) {
-        element.style.cssText = this.engine.evaluateScript(scriptStyle);
+      const styleScript = element.dataset.onSuspendStyleScript;
+      if (styleScript) {
+        element.style.cssText = this.engine.evaluateScript(styleScript);
       }
     }
 
@@ -354,17 +362,22 @@ export class View {
           return new Promise<void>(resolve => {
             for (const choiceElement of choiceElements) {
               choiceElement.setOnSelect(() => {
-                if (this._status.type !== 'choice') {
-                  return false;
-                }
-                this._status = { type: 'ready' };
-                this.engine.evaluateScript(choiceElement.script);
-                resolve();
-                return true;
+                choiceElements.forEach(it => it.setOnSelect(undefined));
+                this._status = {
+                  type: 'waiting',
+                  // Choice on-select animation isn't skippable.
+                  skip: () => {},
+                };
+                choiceElement.waitOnSelectAnimation().then(() => {
+                  this._status = { type: 'ready' };
+                  this.engine.evaluateScript(choiceElement.script);
+                  resolve();
+                });
               });
             }
             this._status = {
               type: 'choice',
+              highlight: index => choiceElements[index].setHighlighted(true),
               select: index => choiceElements[index].select(),
             };
           }).then(() => true);
@@ -389,8 +402,9 @@ export class View {
                         voiceElements.map(it => it.wait(Matcher.Any)),
                       ).then(() => resolve());
                     } else {
-                      this.clock.addTimeoutCallback(CONTINUE_DURATION, () =>
-                        resolve(),
+                      this.clock.addTimeoutCallback(
+                        CONTINUE_DURATION_MILLIS,
+                        () => resolve(),
                       );
                     }
                   }),

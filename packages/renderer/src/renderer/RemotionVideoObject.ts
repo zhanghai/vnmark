@@ -1,177 +1,66 @@
-import { parseMedia } from '@remotion/media-parser';
 import {
   FrameClock,
-  HTMLElements,
   RevocableUrl,
   VideoElementResolvedProperties,
   VideoObject,
   ViewError,
 } from '@vnmark/view';
-// @ts-expect-error TS2307
-import { getAbsoluteSrc } from 'remotion/../../../dist/cjs/absolute-src';
-// @ts-expect-error TS2307
-import { getExpectedMediaFrameUncorrected } from 'remotion/../../../dist/cjs/video/get-current-time';
-// @ts-expect-error TS2307
-import { getOffthreadVideoSource } from 'remotion/../../../dist/cjs/video/offthread-video-source';
 import { type RenderAssetManagerContext } from 'remotion/dist/cjs/RenderAssetManager';
+import { RemotionVideo } from './RemotionMedia';
 
 export class RemotionVideoObject implements VideoObject {
-  private image: HTMLImageElement;
-
-  private _url!: RevocableUrl;
-  private assetId!: string;
-  private durationInFrames!: number;
-
-  private startFrame!: number;
-  private isStopped = false;
+  private video: RemotionVideo;
 
   private _value = 1;
   private _propertyAlpha = 1;
   private _propertyVolume = 1;
-  private _volume = 1;
-  loop = false;
 
   constructor(
-    private readonly clock: FrameClock,
-    private readonly isDryRun: boolean,
-    private readonly framePromises: Promise<void>[],
-    private readonly assetContext: RenderAssetManagerContext,
+    clock: FrameClock,
+    isDryRun: boolean,
+    framePromises: Promise<void>[],
+    assetContext: RenderAssetManagerContext,
   ) {
-    this.image = document.createElement('img');
-    this.image.style.position = 'absolute';
-    this.image.style.width = '100%';
-    this.image.style.height = '100%';
-    this.image.style.objectFit = 'contain';
+    this.video = new RemotionVideo(
+      clock,
+      isDryRun,
+      framePromises,
+      assetContext,
+    );
   }
 
   get url(): RevocableUrl {
-    return this._url;
+    return this.video.url;
   }
 
-  async load(url: RevocableUrl) {
-    if (this._url) {
-      throw new ViewError('Cannot reload an video object');
-    }
-    this._url = url;
-    this.assetId = `video-${url.value}-${this.clock.frame}`;
-    const durationInSeconds = (
-      await parseMedia({
-        src: url.value,
-        fields: { slowDurationInSeconds: true },
-        acknowledgeRemotionLicense: true,
-      })
-    ).slowDurationInSeconds;
-    this.durationInFrames = Math.ceil(durationInSeconds * this.clock.fps);
+  load(url: RevocableUrl): Promise<void> {
+    return this.video.load(url);
   }
 
-  destroy() {}
+  destroy() {
+    this.video.destroy();
+  }
 
   attach(parentElement: HTMLElement, order: number) {
-    this.startFrame = this.clock.frame;
-    HTMLElements.insertWithOrder(parentElement, order, this.image);
-    this.registerAudio();
-    this.clock.addFrameCallback(this, () => {
-      this.updateImage();
-      this.updateAudio();
-    });
+    this.video.attach(parentElement, order);
+    this.video.play();
   }
 
   detach() {
-    this.isStopped = true;
-    this.clock.removeFrameCallback(this);
-    this.unregisterAudio();
-    this.image.remove();
+    this.video.stop();
+    this.video.detach();
   }
 
   get isPlaying(): boolean {
-    const isFirstPlayback =
-      this.clock.frame - this.startFrame < this.durationInFrames;
-    return !this.isStopped && (this.loop || isFirstPlayback);
+    return this.video.isPlaying;
   }
 
   createPlaybackPromise(): Promise<void> {
-    if (this.loop || !this.isPlaying) {
-      return Promise.resolve();
-    }
-    const endFrame = this.startFrame + this.durationInFrames;
-    const remainingFrames = Math.max(0, endFrame - this.clock.frame);
-    const remainingMillis = (remainingFrames / this.clock.fps) * 1000;
-    return this.clock.createTimeoutPromise(remainingMillis);
+    return this.video.createPlaybackPromise();
   }
 
   snapPlayback() {
-    this.isStopped = true;
-    this.clock.removeFrameCallback(this);
-    this.unregisterAudio();
-  }
-
-  private updateImage() {
-    if (this.isDryRun || !this.isPlaying) {
-      return undefined;
-    }
-    const currentTime =
-      getExpectedMediaFrameUncorrected({
-        frame: this.mediaFrame,
-        playbackRate: 1,
-        startFrom: 0,
-      }) / this.clock.fps;
-    const imageSrc = getOffthreadVideoSource({
-      src: this._url.value,
-      currentTime,
-      transparent: false,
-      toneMapped: true,
-    });
-    this.framePromises.push(this.loadImage(imageSrc));
-  }
-
-  private async loadImage(src: string): Promise<void> {
-    const response = await fetch(src, { cache: 'no-store' });
-    if (!response.ok) {
-      throw new ViewError(`Cannot load video image ${src}`);
-    }
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    try {
-      this.image.src = url;
-      await this.image.decode();
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  }
-
-  private registerAudio() {
-    if (this.isDryRun) {
-      return;
-    }
-    this.assetContext.registerRenderAsset({
-      type: 'video',
-      src: getAbsoluteSrc(this._url.value),
-      id: this.assetId,
-      frame: this.clock.frame,
-      volume: this._volume,
-      mediaFrame: this.mediaFrame,
-      playbackRate: 1,
-      toneFrequency: null,
-      audioStartFrame: 0,
-    });
-  }
-
-  private get mediaFrame(): number {
-    return (this.clock.frame - this.startFrame) % this.durationInFrames;
-  }
-
-  private unregisterAudio() {
-    if (this.isDryRun) {
-      return;
-    }
-    this.assetContext.unregisterRenderAsset(this.assetId);
-  }
-
-  private updateAudio() {
-    this.unregisterAudio();
-    if (this.isPlaying) {
-      this.registerAudio();
-    }
+    this.video.stop();
   }
 
   get value(): number {
@@ -180,7 +69,7 @@ export class RemotionVideoObject implements VideoObject {
 
   set value(value: number) {
     this._value = value;
-    this.updateOpacity();
+    this.updateAlpha();
     this.updateVolume();
   }
 
@@ -190,12 +79,11 @@ export class RemotionVideoObject implements VideoObject {
 
   set propertyAlpha(value: number) {
     this._propertyAlpha = value;
-    this.updateOpacity();
+    this.updateAlpha();
   }
 
-  private updateOpacity() {
-    const opacity = this._value * this._propertyAlpha;
-    HTMLElements.setOpacity(this.image, opacity);
+  private updateAlpha() {
+    this.video.alpha = this._value * this._propertyAlpha;
   }
 
   get propertyVolume(): number {
@@ -208,12 +96,15 @@ export class RemotionVideoObject implements VideoObject {
   }
 
   private updateVolume() {
-    const volume = this._value * this._propertyVolume;
-    if (this._volume === volume) {
-      return;
-    }
-    this._volume = volume;
-    this.updateAudio();
+    this.video.volume = this._value * this._propertyVolume;
+  }
+
+  get loop(): boolean {
+    return this.video.loop;
+  }
+
+  set loop(value: boolean) {
+    this.video.loop = value;
   }
 
   getPropertyValue(

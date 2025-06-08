@@ -1,6 +1,7 @@
 import { Howl } from 'howler';
 
 import { RevocableUrl } from '../package';
+import { Howls } from '../util';
 import { AudioElementResolvedProperties } from './ElementResolvedProperties';
 import { ViewError } from './View';
 
@@ -55,26 +56,8 @@ export class DOMAudioObject implements AudioObject {
       throw new ViewError('Cannot reload an audio object');
     }
     this._url = url;
-    const howl = new Howl({
-      src: url.value,
-      // The format here is only needed to workaround Howl.
-      format: 'mp3',
-      preload: false,
-    });
-    const promise = new Promise<void>((resolve, reject) => {
-      howl
-        .once('load', () => {
-          howl.off('loaderror');
-          resolve();
-        })
-        .once('loaderror', (_, error) => {
-          howl.off('load');
-          reject(error);
-        });
-    });
-    this.howl = howl;
-    howl.load();
-    return promise;
+    this.howl = Howls.create(url.value);
+    return Howls.load(this.howl);
   }
 
   destroy() {

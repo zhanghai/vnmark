@@ -5,19 +5,21 @@ export class ElementAnimator {
 
   animate(
     element: HTMLElement,
-    keyframes: Keyframe[] | PropertyIndexedKeyframes | null,
-    options?: number | KeyframeAnimationOptions,
-  ) {
-    const animation = element.animate(keyframes, options);
+    ...animateArguments: Parameters<HTMLElement['animate']>
+  ): Promise<void> {
+    const animation = element.animate(...animateArguments);
     animation.pause();
-    const startTime = this.clock.time;
-    const clockCallback: ClockCallback = time => {
-      animation.currentTime = time - startTime;
-      // @ts-expect-error TS2339
-      if (animation.overallProgress === 1) {
-        this.clock.removeFrameCallback(clockCallback);
-      }
-    }
-    this.clock.addFrameCallback(clockCallback);
+    return new Promise(resolve => {
+      const startTime = this.clock.time;
+      const clockCallback: ClockCallback = time => {
+        animation.currentTime = time - startTime;
+        // @ts-expect-error TS2339
+        if (animation.overallProgress === 1) {
+          this.clock.removeFrameCallback(clockCallback);
+          resolve();
+        }
+      };
+      this.clock.addFrameCallback(clockCallback);
+    });
   }
 }
