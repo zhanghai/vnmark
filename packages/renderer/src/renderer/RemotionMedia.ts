@@ -8,19 +8,19 @@ import {
 } from '@vnmark/view';
 // @ts-expect-error TS2307
 import { getAbsoluteSrc } from 'remotion/../../../dist/cjs/absolute-src';
-import { type AudioOrVideoAsset } from 'remotion/dist/cjs/CompositionManager';
-import { type RenderAssetManagerContext } from 'remotion/dist/cjs/RenderAssetManager';
 // @ts-expect-error TS2307
 import { getExpectedMediaFrameUncorrected } from 'remotion/../../../dist/cjs/video/get-current-time';
 // @ts-expect-error TS2307
 import { getOffthreadVideoSource } from 'remotion/../../../dist/cjs/video/offthread-video-source';
+import { type AudioOrVideoAsset } from 'remotion/dist/cjs/CompositionManager';
+import { type RenderAssetManagerContext } from 'remotion/dist/cjs/RenderAssetManager';
 
 export class RemotionAudio {
   private _url!: RevocableUrl;
-  private assetId!: string;
   private durationInFrames!: number;
 
   private startFrame: number | undefined;
+  private assetId: string | undefined;
 
   private _volume = 1;
   loop = false;
@@ -48,7 +48,6 @@ export class RemotionAudio {
       throw new ViewError(`Cannot reload URL ${url}`);
     }
     this._url = url;
-    this.assetId = `${this.renderAssetType}-${url.value}-${this.clock.frame}`;
     const durationInSeconds = await this.loadDurationInSeconds(url.value);
     this.durationInFrames = Math.ceil(durationInSeconds * this.clock.fps);
   }
@@ -108,6 +107,10 @@ export class RemotionAudio {
     if (this.isDryRun) {
       return;
     }
+    const loopIndex = Math.floor(
+      (this.clock.frame - this.startFrame!) / this.durationInFrames,
+    );
+    this.assetId = `${this.renderAssetType}-${this._url.value}-${this.startFrame}-${loopIndex}`;
     this.assetContext.registerRenderAsset({
       type: this.renderAssetType,
       src: getAbsoluteSrc(this._url.value),
@@ -129,7 +132,9 @@ export class RemotionAudio {
     if (this.isDryRun) {
       return;
     }
-    this.assetContext.unregisterRenderAsset(this.assetId);
+    if (this.assetId !== undefined) {
+      this.assetContext.unregisterRenderAsset(this.assetId);
+    }
   }
 
   get volume(): number {
