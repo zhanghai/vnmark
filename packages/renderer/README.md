@@ -5,7 +5,7 @@ A VNMark renderer based on Web technologies including [Remotion](https://github.
 ## Usage
 
 ```console
-TMPDIR=path/to/your/temp npx remotion render Vnmark --props='{"fileName": "render_start"}' --log=verbose --color-space=bt709 --image-format=png --timeout=1800000 --concurrency=5
+TMPDIR=path/to/your/temp npx remotion render Vnmark --props='{ "state": { "fileName": "01a_00000" }, "choices": [] }' --log=verbose --color-space=bt709 --image-format=png --timeout=1800000 --concurrency=5
 ```
 
 ## Known issues

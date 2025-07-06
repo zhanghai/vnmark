@@ -203,6 +203,12 @@ export class Engine {
     return this._state;
   }
 
+  private _lastState: EngineState | undefined;
+
+  get lastState(): EngineState | undefined {
+    return this._lastState;
+  }
+
   private _document!: Document;
 
   get document(): Document {
@@ -212,6 +218,10 @@ export class Engine {
   constructor(
     readonly package_: Package,
     private readonly quickJs: QuickJSWASMModule,
+    private readonly onExecuteCommand: (
+      engine: Engine,
+      command: CommandLine,
+    ) => boolean = () => true,
   ) {}
 
   async execute(state?: Partial<EngineState>) {
@@ -235,6 +245,9 @@ export class Engine {
           break;
         }
         const command = commandLines[commandIndex];
+        if (!this.onExecuteCommand(this, command)) {
+          break;
+        }
         let moveToNextCommand: boolean;
         try {
           moveToNextCommand = await this.executeCommand(command);
@@ -251,6 +264,7 @@ export class Engine {
         }
       }
     } finally {
+      this._lastState = this._state;
       // @ts-expect-error TS2322
       this._state = undefined;
       // @ts-expect-error TS2322

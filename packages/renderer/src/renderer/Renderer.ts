@@ -48,10 +48,10 @@ export class Renderer {
     this.view.isContinuing = true;
   }
 
-  async init(engineState?: Partial<EngineState>) {
+  async init(state?: Partial<EngineState>) {
     await this.view.init();
     // noinspection ES6MissingAwait
-    this.engine.execute(engineState);
+    this.engine.execute(state);
     await this.nextFrame(true);
   }
 
