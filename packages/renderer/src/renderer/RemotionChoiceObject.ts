@@ -116,7 +116,7 @@ export class RemotionChoiceObject implements ChoiceObject {
     const onSelectAnimatePromises: Promise<void>[] = [];
     for (const [element, animateArguments] of this.onSelectAnimateElements) {
       onSelectAnimatePromises.push(
-        this.animateElement(element, ...animateArguments),
+        this.animateElement(element, undefined, ...animateArguments),
       );
     }
     this.onSelectAnimatePromise = Promise.all(onSelectAnimatePromises).then(

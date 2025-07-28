@@ -1,15 +1,9 @@
 import { HTMLElements } from '../util';
 import { EffectElementResolvedProperties } from './ElementResolvedProperties';
-import { ViewError } from './View';
+import { AnimateElement, ViewError } from './View';
 
 export abstract class EffectObject {
   private _value = 1;
-
-  constructor(
-    protected readonly effectElement: HTMLElement,
-    protected readonly effectOverlayElement: HTMLElement,
-    protected readonly index: number,
-  ) {}
 
   async load() {}
 
@@ -23,12 +17,12 @@ export abstract class EffectObject {
 
   set value(value: number) {
     if (this._value !== value) {
-      this.updateValue(value);
       this._value = value;
+      this.onValueUpdated(value);
     }
   }
 
-  protected updateValue(_value: number) {}
+  protected onValueUpdated(_value: number) {}
 
   getPropertyValue(
     propertyName: keyof EffectElementResolvedProperties,
@@ -62,12 +56,22 @@ export namespace EffectObject {
     effectElement: HTMLElement,
     effectOverlayElement: HTMLElement,
     index: number,
+    animateElement: AnimateElement,
   ): EffectObject {
     if (value === 'cross-fade') {
       return new CrossFadeEffectObject(
         effectElement,
         effectOverlayElement,
         index,
+      );
+    } else if (value.startsWith('animate(')) {
+      const animateArguments: Parameters<HTMLElement['animate']> = JSON.parse(
+        `[${value.substring('animate('.length, value.length - 1)}]`,
+      );
+      return new AnimateEffectObject(
+        effectElement,
+        animateElement,
+        animateArguments,
       );
     } else {
       throw new ViewError(`Unsupported effect "${value}"`);
@@ -80,10 +84,10 @@ export class CrossFadeEffectObject extends EffectObject {
 
   constructor(
     effectElement: HTMLElement,
-    effectOverlayElement: HTMLElement,
-    index: number,
+    private readonly effectOverlayElement: HTMLElement,
+    private readonly index: number,
   ) {
-    super(effectElement, effectOverlayElement, index);
+    super();
 
     this.element = effectElement.cloneNode(true) as HTMLElement;
   }
@@ -111,7 +115,32 @@ export class CrossFadeEffectObject extends EffectObject {
     this.element.remove();
   }
 
-  protected updateValue(value: number) {
+  protected onValueUpdated(value: number) {
     HTMLElements.setOpacity(this.element, 1 - value);
+  }
+}
+
+export class AnimateEffectObject extends EffectObject {
+  private abortController: AbortController | undefined;
+
+  constructor(
+    private readonly effectElement: HTMLElement,
+    private readonly animateElement: AnimateElement,
+    private readonly animateArguments: Parameters<HTMLElement['animate']>,
+  ) {
+    super();
+  }
+
+  attach() {
+    this.abortController = new AbortController();
+    this.animateElement(
+      this.effectElement,
+      this.abortController.signal,
+      ...this.animateArguments,
+    );
+  }
+
+  detach() {
+    this.abortController?.abort();
   }
 }

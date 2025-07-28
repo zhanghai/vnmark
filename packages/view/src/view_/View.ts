@@ -46,16 +46,25 @@ export type ViewStatus =
 
 export type AnimateElement = (
   element: HTMLElement,
+  abortSignal: AbortSignal | undefined,
   ...animateArguments: Parameters<HTMLElement['animate']>
 ) => Promise<void>;
 
 function domAnimateElement(
   element: HTMLElement,
+  abortSignal: AbortSignal | undefined,
   ...animateArguments: Parameters<HTMLElement['animate']>
 ): Promise<void> {
+  if (abortSignal?.aborted) {
+    return Promise.resolve();
+  }
   const animation = element.animate(...animateArguments);
   return new Promise<void>(resolve => {
+    animation.oncancel = () => resolve();
     animation.onfinish = () => resolve();
+    if (abortSignal) {
+      abortSignal.onabort = () => animation.cancel();
+    }
   });
 }
 
@@ -264,6 +273,7 @@ export class View {
               this.layout.effectElement,
               this.layout.effectOverlayElement,
               elementProperties.index,
+              this.animateElement,
               this.clock,
             );
             break;
@@ -333,7 +343,7 @@ export class View {
           animateScript,
         ) as Parameters<HTMLElement['animate']>;
         if (animateArguments) {
-          this.animateElement(element, ...animateArguments);
+          this.animateElement(element, undefined, ...animateArguments);
         }
       }
       const styleScript = element.dataset.onSuspendStyleScript;

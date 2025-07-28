@@ -5,8 +5,12 @@ export class ElementAnimator {
 
   animate(
     element: HTMLElement,
+    abortSignal: AbortSignal | undefined,
     ...animateArguments: Parameters<HTMLElement['animate']>
   ): Promise<void> {
+    if (abortSignal?.aborted) {
+      return Promise.resolve();
+    }
     const animation = element.animate(...animateArguments);
     animation.pause();
     return new Promise(resolve => {
@@ -20,6 +24,12 @@ export class ElementAnimator {
         }
       };
       this.clock.addFrameCallback(clockCallback);
+      if (abortSignal) {
+        abortSignal.onabort = () => {
+          this.clock.removeFrameCallback(clockCallback);
+          resolve();
+        };
+      }
     });
   }
 }

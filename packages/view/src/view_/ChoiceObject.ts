@@ -92,7 +92,7 @@ export class DOMChoiceObject implements ChoiceObject {
       const onSelectAnimatePromises: Promise<void>[] = [];
       for (const [element, animateArguments] of this.onSelectAnimateElements) {
         onSelectAnimatePromises.push(
-          animateElement(element, ...animateArguments),
+          animateElement(element, undefined, ...animateArguments),
         );
       }
       this.onSelectAnimatePromise = Promise.all(onSelectAnimatePromises).then(

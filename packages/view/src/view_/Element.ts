@@ -833,6 +833,7 @@ export class EffectElement extends BaseElement<
     private readonly effectElement: HTMLElement,
     private readonly effectOverlayElement: HTMLElement,
     private readonly index: number,
+    private readonly animateElement: AnimateElement,
     clock: Clock,
   ) {
     super(clock, false);
@@ -858,6 +859,7 @@ export class EffectElement extends BaseElement<
       this.effectElement,
       this.effectOverlayElement,
       this.index,
+      this.animateElement,
     );
     await object.load();
     return object;
