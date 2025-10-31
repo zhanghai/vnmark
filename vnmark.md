@@ -16,7 +16,7 @@ Lines are always separated by newlines (`\n`). Carriage returns, spaces and tabs
 
 There are 3 types of values in a line:
 
-- Literal value: A value can be written literally without any quotation, and whitespace surrounding it is ignored.
+- Literal value: A value can be written literally without any quotation, whitespace surrounding it is ignored, and certain escape sequences (`\\r`, `\\t`, `\ `, `\#`, `\;`, `\:`, `\,`, `\=`, `\"`, `` \` ``, `\t`, `\r`, `\n`, `\\`, `\"` and `\uFFFF`) are interpreted within it.
 - Quoted value: A value can be written within double quotes (`"`), and certain escape sequences (`\t`, `\r`, `\n`, `\\`, `\"` and `\uFFFF`) are interpreted within it.
 - Script value: JavaScript can be written within backticks (`"`) as a value, and certain escape sequences (`\t`, `\r`, `\n`, `\\`, `` \` `` and `\uFFFF`) are interpreted within it. The value of a script value is its evaluation output.
 
@@ -394,31 +394,43 @@ ValueNoWhiteSpace
   / ScriptValue
 
 LiteralValue
-  = value:$LiteralChar|1.., _| { return { type: 'LiteralValue', location: location(), value }; }
+  = value:$LiteralCharNoWhiteSpace|1.., _| { return { type: 'LiteralValue', location: location(), value }; }
 
 LiteralValueNoWhiteSpace
-  = value:$LiteralChar+ { return { type: 'LiteralValue', location: location(), value }; }
+  = value:$LiteralCharNoWhiteSpace+ { return { type: 'LiteralValue', location: location(), value }; }
 
-LiteralChar
-  = [^\n\r\t #;:,="`]
+LiteralCharNoWhiteSpace
+  = [^\n\\\r\t #;:,="`]
+  / '\\\r' { return '\r'; }
+  / '\\\t' { return '\t'; }
+  / '\\ ' { return ' '; }
+  / '\\#' { return '#'; }
+  / '\\;' { return ';'; }
+  / '\\:' { return ':'; }
+  / '\\,' { return ','; }
+  / '\\=' { return '='; }
+  / '\\"' { return '"'; }
+  / '\\`' { return '`'; }
+  / EscapedChar
 
 QuotedValue
   = '"' chars:QuotedChar* '"' { return { type: 'QuotedValue', location: location(), value: chars.join('') }; }
 
 QuotedChar
-  = '\\"' { return '"'; }
-  / EscapableChar
+  = [^\n\\"]
+  / '\\"' { return '"'; }
+  / EscapedChar
 
 ScriptValue
   = '`' chars:ScriptChar* '`' { return { type: 'ScriptValue', location: location(), script: chars.join('') }; }
 
 ScriptChar
-  = '\\`' { return '`'; }
-  / EscapableChar
+  = [^\n\\`]
+  / '\\`' { return '`'; }
+  / EscapedChar
 
-EscapableChar
-  = [^\n\\"]
-  / '\\t' { return '\t'; }
+EscapedChar
+  = '\\t' { return '\t'; }
   / '\\r' { return '\r'; }
   / '\\n' { return '\n'; }
   / '\\\\' { return '\\'; }

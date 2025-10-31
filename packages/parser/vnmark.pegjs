@@ -59,31 +59,43 @@ ValueNoWhiteSpace
   / ScriptValue
 
 LiteralValue
-  = value:$LiteralChar|1.., _| { return { type: 'LiteralValue', location: location(), value }; }
+  = value:$LiteralCharNoWhiteSpace|1.., _| { return { type: 'LiteralValue', location: location(), value }; }
 
 LiteralValueNoWhiteSpace
-  = value:$LiteralChar+ { return { type: 'LiteralValue', location: location(), value }; }
+  = value:$LiteralCharNoWhiteSpace+ { return { type: 'LiteralValue', location: location(), value }; }
 
-LiteralChar
-  = [^\n\r\t #;:,="`]
+LiteralCharNoWhiteSpace
+  = [^\n\\\r\t #;:,="`]
+  / '\\\r' { return '\r'; }
+  / '\\\t' { return '\t'; }
+  / '\\ ' { return ' '; }
+  / '\\#' { return '#'; }
+  / '\\;' { return ';'; }
+  / '\\:' { return ':'; }
+  / '\\,' { return ','; }
+  / '\\=' { return '='; }
+  / '\\"' { return '"'; }
+  / '\\`' { return '`'; }
+  / EscapedChar
 
 QuotedValue
   = '"' chars:QuotedChar* '"' { return { type: 'QuotedValue', location: location(), value: chars.join('') }; }
 
 QuotedChar
-  = '\\"' { return '"'; }
-  / EscapableChar
+  = [^\n\\"]
+  / '\\"' { return '"'; }
+  / EscapedChar
 
 ScriptValue
   = '`' chars:ScriptChar* '`' { return { type: 'ScriptValue', location: location(), script: chars.join('') }; }
 
 ScriptChar
-  = '\\`' { return '`'; }
-  / EscapableChar
+  = [^\n\\`]
+  / '\\`' { return '`'; }
+  / EscapedChar
 
-EscapableChar
-  = [^\n\\"]
-  / '\\t' { return '\t'; }
+EscapedChar
+  = '\\t' { return '\t'; }
   / '\\r' { return '\r'; }
   / '\\n' { return '\n'; }
   / '\\\\' { return '\\'; }
