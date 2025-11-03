@@ -21,9 +21,6 @@ export class TextObject {
     // TODO: Support localization.
     const fragment = DOMPurity.sanitize(text, { RETURN_DOM_FRAGMENT: true });
     const element = document.createElement('div');
-    element.style.position = 'absolute';
-    element.style.inset = '0';
-    element.style.overflow = 'hidden';
     element.appendChild(fragment);
     const spans: HTMLSpanElement[] = [];
     if (enterByGraphemeCluster) {
