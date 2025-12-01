@@ -89,6 +89,7 @@ export namespace HTMLElements {
       const childOrder = Number.parseInt(childOrderString);
       if (order < childOrder) {
         insertBeforeElement = childElement;
+        break;
       }
     }
     element.dataset.order = order.toString();
