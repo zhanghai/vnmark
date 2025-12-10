@@ -152,6 +152,7 @@ const COMMAND_ARRAY: Command[] = [
               // @ts-expect-error TS7053
               element[name] = value;
             } else {
+              // @ts-expect-error TS2322
               it.elements[canonicalElementName] = {
                 type,
                 index,

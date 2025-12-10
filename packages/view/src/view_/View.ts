@@ -9,10 +9,12 @@ import {
   UpdateViewOptions,
 } from '../engine';
 import { HTMLElements, Numbers } from '../util';
+import { Animations } from '../util/Animations';
 import { AudioObject, DOMAudioObject } from './AudioObject';
 import { DOMChoiceObject, NewChoiceObject } from './ChoiceObject';
 import { Clock } from './Clock';
 import {
+  AnimationElement,
   AudioElement,
   AvatarElementTransitionOptions,
   ChoiceElement,
@@ -59,13 +61,10 @@ function domAnimateElement(
     return Promise.resolve();
   }
   const animation = element.animate(...animateArguments);
-  return new Promise<void>(resolve => {
-    animation.oncancel = () => resolve();
-    animation.onfinish = () => resolve();
-    if (abortSignal) {
-      abortSignal.onabort = () => animation.cancel();
-    }
-  });
+  if (abortSignal) {
+    abortSignal.onabort = () => Animations.finishOrCancel(animation);
+  }
+  return Animations.getFinishedOrCanceled(animation).then(() => {});
 }
 
 const CONTINUE_DURATION_MILLIS = 1500;
@@ -267,6 +266,9 @@ export class View {
                 this.newVideoObject,
               );
             }
+            break;
+          case 'animation':
+            element = new AnimationElement(this.elements, this.clock);
             break;
           case 'effect':
             element = new EffectElement(

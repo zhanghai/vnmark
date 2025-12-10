@@ -1,23 +1,29 @@
+import isEqual from 'lodash.isequal';
 import { MultiMap } from 'mnemonist';
 
+import { Animation, AnimationEasing } from '../animation';
 import {
+  AnimationElementProperties,
   AudioElementProperties,
   ChoiceElementProperties,
+  ContentElementProperties,
   EffectElementProperties,
   ElementProperties,
   ImageElementProperties,
   Matcher,
+  PropertyValue,
   TextElementProperties,
   VideoElementProperties,
 } from '../engine';
 import { Package } from '../package';
-import { CssEasings, Easing, LinearEasing, Transition } from '../transition';
 import { HTMLElements } from '../util';
 import { AudioObject, DOMAudioObject } from './AudioObject';
 import { ChoiceObject, DOMChoiceObject, NewChoiceObject } from './ChoiceObject';
 import { Clock } from './Clock';
-import { EffectObject } from './EffectObject';
+import { Effect } from './Effect';
 import {
+  AnimationElementResolvedProperties,
+  AnimationKeyframe,
   AudioElementResolvedProperties,
   ChoiceElementResolvedProperties,
   EffectElementResolvedProperties,
@@ -45,12 +51,19 @@ export interface Element<Properties extends ElementProperties, Options> {
 
   snap(propertyMatcher: Matcher): void;
 
+  animate(
+    propertyMatcher: Matcher,
+    startValue: PropertyValue,
+    endValue: PropertyValue,
+    fraction: number,
+  ): void;
+
   destroy(): void;
 }
 
-export abstract class BaseElement<
+export abstract class ContentElement<
   Object,
-  Properties extends ElementProperties,
+  Properties extends ContentElementProperties,
   ResolvedProperties extends Record<string, unknown>,
   Options,
 > implements Element<Properties, Options>
@@ -58,16 +71,14 @@ export abstract class BaseElement<
   protected object: Object | undefined;
   protected properties: Properties | undefined;
   protected options: Options | undefined;
+  private propertyNames:
+    | (keyof Properties & keyof ResolvedProperties)[]
+    | undefined;
 
-  protected readonly objectTransitions = new MultiMap<
-    Object,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Transition<any>
-  >();
+  protected readonly objectTransitions = new MultiMap<Object, Animation>();
   protected readonly propertyTransitions = new MultiMap<
     keyof ResolvedProperties,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Transition<any>
+    Animation
   >();
 
   protected constructor(
@@ -167,7 +178,7 @@ export abstract class BaseElement<
 
     const propertyNames = Object.keys(
       (oldObjectOldProperties ?? newObjectNewProperties)!,
-    ) as (keyof ResolvedProperties & string)[];
+    ) as (keyof Properties & keyof ResolvedProperties & string)[];
     for (const propertyName of propertyNames) {
       const oldObjectChanged =
         oldObjectOldProperties?.[propertyName] !==
@@ -178,12 +189,13 @@ export abstract class BaseElement<
       if (oldObjectChanged || newObjectChanged) {
         const transitions = this.propertyTransitions.get(propertyName);
         if (transitions) {
-          Array.from(transitions).forEach(it => it.cancel());
+          Array.from(transitions).forEach(it => it.finishOrCancel());
         }
       }
 
-      const transitionEasing = this.getElementTransitionEasing(
-        resolveElementPropertyTransitionEasing(newProperties, propertyName),
+      const transitionEasing = resolveElementPropertyTransitionEasing(
+        newProperties,
+        propertyName,
       );
       if (oldObjectChanged) {
         this.transitionPropertyValue(
@@ -211,10 +223,12 @@ export abstract class BaseElement<
       this.object = newObject ?? oldObject;
       this.properties = newProperties;
       this.options = newOptions;
+      this.propertyNames = propertyNames;
     } else {
       this.object = undefined;
       this.properties = undefined;
       this.options = undefined;
+      this.propertyNames = undefined;
     }
   }
 
@@ -240,17 +254,6 @@ export abstract class BaseElement<
     return 1;
   }
 
-  private getElementTransitionEasing(name: string): Easing {
-    switch (name) {
-      case 'linear':
-        return LinearEasing;
-      case 'ease':
-        return CssEasings.Ease;
-      default:
-        throw new ViewError(`Unsupported transition easing "${name}"`);
-    }
-  }
-
   protected abstract getPropertyValue(
     object: Object,
     propertyName: keyof ResolvedProperties,
@@ -268,42 +271,47 @@ export abstract class BaseElement<
     propertyValue: ResolvedProperties[keyof ResolvedProperties],
     transitionDelay: number,
     transitionDuration: number,
-    transitionEasing: Easing,
+    transitionEasing: AnimationEasing,
   ) {
     // noinspection SuspiciousTypeOfGuard
     if (typeof propertyValue !== 'number') {
       this.setPropertyValue(object, propertyName, propertyValue);
       return;
     }
-    const currentPropertyValue = this.getPropertyValue(object, propertyName);
-    const transition = new Transition(
-      currentPropertyValue,
-      propertyValue,
-      transitionDuration,
-    )
-      .setDelay(transitionDelay)
-      .setEasing(transitionEasing)
-      .addOnUpdateCallback(it =>
-        this.setPropertyValue(object, propertyName, it),
-      )
-      .addOnEndCallback(() => {
+    const currentPropertyValue = this.getPropertyValue(
+      object,
+      propertyName,
+    ) as number;
+    const transition = new Animation(
+      this.clock,
+      progress => {
+        const progressPropertyValue =
+          currentPropertyValue +
+          progress * (propertyValue - currentPropertyValue);
+        // @ts-expect-error TS2345
+        this.setPropertyValue(object, propertyName, progressPropertyValue);
+      },
+      () => {
         this.objectTransitions.remove(object, transition);
         this.propertyTransitions.remove(propertyName, transition);
         this.clock.removeFrameCallback(transition);
         if (propertyName === 'value' && propertyValue === 0) {
           const transitions = this.objectTransitions.get(object);
           if (transitions) {
-            Array.from(transitions).forEach(it => it.cancel());
+            Array.from(transitions).forEach(it => it.finishOrCancel());
           }
           this.detachObject(object);
           this.destroyObject(object);
           // TODO: Remove this element if there's no object?
         }
-      });
+      },
+      transitionDuration,
+      transitionEasing,
+      transitionDelay,
+    );
     this.objectTransitions.set(object, transition);
     this.propertyTransitions.set(propertyName, transition);
-    this.clock.addFrameCallback(transition, it => transition.update(it));
-    transition.start();
+    transition.play();
   }
 
   hasTransition(propertyMatcher: Matcher): boolean {
@@ -312,11 +320,11 @@ export abstract class BaseElement<
     );
   }
 
-  async wait(propertyMatcher: Matcher): Promise<void> {
+  async wait(propertyMatcher: Matcher) {
     await Promise.all(
       Array.from(this.propertyTransitions)
         .filter(it => propertyMatcher.match(it[0] as string))
-        .map(it => it[1].asPromise()),
+        .map(it => it[1].finishedOrCanceled),
     );
   }
 
@@ -326,15 +334,69 @@ export abstract class BaseElement<
       this.propertyTransitions,
     )) {
       if (propertyMatcher.match(propertyName as string)) {
-        transition.cancel();
+        transition.finishOrCancel();
       }
     }
   }
 
+  animate(
+    propertyMatcher: Matcher,
+    startValue: PropertyValue,
+    endValue: PropertyValue,
+    fraction: number,
+  ) {
+    if (!this.propertyNames) {
+      return;
+    }
+    for (const propertyName of this.propertyNames) {
+      if (propertyMatcher.match(propertyName as string)) {
+        const startPropertyValue = this.resolvePropertyValue(
+          propertyName,
+          startValue as Properties[typeof propertyName],
+          this.properties!.type,
+          this.object!,
+          this.options!,
+        );
+        if (typeof startPropertyValue !== 'number') {
+          throw new ViewError(
+            `Start value of animation (${startPropertyValue}) isn't animatable`,
+          );
+        }
+        const endPropertyValue = this.resolvePropertyValue(
+          propertyName,
+          endValue as Properties[typeof propertyName],
+          this.properties!.type,
+          this.object!,
+          this.options!,
+        );
+        if (typeof endPropertyValue !== 'number') {
+          throw new ViewError(
+            `End value of animation (${endPropertyValue}) isn't animatable`,
+          );
+        }
+        const propertyValue =
+          startPropertyValue +
+          fraction * (endPropertyValue - startPropertyValue);
+        // @ts-expect-error TS2345
+        this.setPropertyValue(this.object!, propertyName, propertyValue);
+      }
+    }
+  }
+
+  protected abstract resolvePropertyValue<
+    PropertyName extends keyof Properties & keyof ResolvedProperties,
+  >(
+    propertyName: PropertyName,
+    propertyValue: Properties[PropertyName],
+    elementType: Properties['type'],
+    object: Object,
+    options: Options,
+  ): ResolvedProperties[PropertyName];
+
   destroy() {
     // Multimap isn't 100% safe for mutations during iteration.
     for (const transition of Array.from(this.objectTransitions.values())) {
-      transition.cancel();
+      transition.finishOrCancel();
     }
     const object = this.object;
     if (object) {
@@ -359,7 +421,7 @@ export type ImageElementTransitionOptions =
   | AvatarElementTransitionOptions
   | undefined;
 
-export class ImageElement extends BaseElement<
+export class ImageElement extends ContentElement<
   ImageObject,
   ImageElementProperties,
   ImageElementResolvedProperties,
@@ -390,20 +452,10 @@ export class ImageElement extends BaseElement<
     valueChanged: boolean,
     options: ImageElementTransitionOptions,
   ): ImageElementResolvedProperties {
-    const manifest = this.package_.manifest;
-    return ImageElementResolvedProperties.resolve(properties, {
-      valueChanged,
-      screenWidth: manifest.width,
-      screenHeight: manifest.height,
-      imageWidth: object.naturalWidth / manifest.density,
-      imageHeight: object.naturalHeight / manifest.density,
-      figureIndex: (options as FigureElementTransitionOptions)?.figureIndex,
-      figureCount: (options as FigureElementTransitionOptions)?.figureCount,
-      avatarPositionX: (options as AvatarElementTransitionOptions)
-        ?.avatarPositionX,
-      avatarPositionY: (options as AvatarElementTransitionOptions)
-        ?.avatarPositionY,
-    });
+    return ImageElementResolvedProperties.resolve(
+      properties,
+      this.getResolveOptions(object, valueChanged, options),
+    );
   }
 
   protected async createObject(
@@ -448,6 +500,44 @@ export class ImageElement extends BaseElement<
     object.setPropertyValue(propertyName, propertyValue);
   }
 
+  protected resolvePropertyValue<
+    PropertyName extends keyof ImageElementResolvedProperties,
+  >(
+    propertyName: PropertyName,
+    propertyValue: ImageElementProperties[PropertyName],
+    elementType: ImageElementProperties['type'],
+    object: ImageObject,
+    options: ImageElementTransitionOptions,
+  ): ImageElementResolvedProperties[PropertyName] {
+    return ImageElementResolvedProperties.resolveProperty(
+      propertyName,
+      propertyValue,
+      elementType,
+      this.getResolveOptions(object, false, options),
+    );
+  }
+
+  private getResolveOptions(
+    object: ImageObject,
+    valueChanged: boolean,
+    options: ImageElementTransitionOptions,
+  ): ImageElementResolvedProperties.ResolveOptions {
+    const manifest = this.package_.manifest;
+    return {
+      valueChanged,
+      screenWidth: manifest.width,
+      screenHeight: manifest.height,
+      imageWidth: object.naturalWidth / manifest.density,
+      imageHeight: object.naturalHeight / manifest.density,
+      figureIndex: (options as FigureElementTransitionOptions)?.figureIndex,
+      figureCount: (options as FigureElementTransitionOptions)?.figureCount,
+      avatarPositionX: (options as AvatarElementTransitionOptions)
+        ?.avatarPositionX,
+      avatarPositionY: (options as AvatarElementTransitionOptions)
+        ?.avatarPositionY,
+    };
+  }
+
   destroy() {
     super.destroy();
 
@@ -455,7 +545,7 @@ export class ImageElement extends BaseElement<
   }
 }
 
-export class TextElement extends BaseElement<
+export class TextElement extends ContentElement<
   TextObject,
   TextElementProperties,
   TextElementResolvedProperties,
@@ -524,9 +614,25 @@ export class TextElement extends BaseElement<
   ) {
     object.setPropertyValue(propertyName, propertyValue);
   }
+
+  protected resolvePropertyValue<
+    PropertyName extends keyof TextElementResolvedProperties,
+  >(
+    propertyName: PropertyName,
+    propertyValue: TextElementProperties[PropertyName],
+    _elementType: TextElementProperties['type'],
+    _object: TextObject,
+    _options: unknown,
+  ): TextElementResolvedProperties[PropertyName] {
+    return TextElementResolvedProperties.resolveProperty(
+      propertyName,
+      propertyValue,
+      { valueChanged: false },
+    );
+  }
 }
 
-export class ChoiceElement extends BaseElement<
+export class ChoiceElement extends ContentElement<
   ChoiceObject,
   ChoiceElementProperties,
   ChoiceElementResolvedProperties,
@@ -615,9 +721,25 @@ export class ChoiceElement extends BaseElement<
   ) {
     object.setPropertyValue(propertyName, propertyValue);
   }
+
+  protected resolvePropertyValue<
+    PropertyName extends keyof ChoiceElementResolvedProperties,
+  >(
+    propertyName: PropertyName,
+    propertyValue: ChoiceElementProperties[PropertyName],
+    _elementType: ChoiceElementProperties['type'],
+    _object: ChoiceObject,
+    _options: unknown,
+  ): ChoiceElementResolvedProperties[PropertyName] {
+    return ChoiceElementResolvedProperties.resolveProperty(
+      propertyName,
+      propertyValue,
+      { valueChanged: false },
+    );
+  }
 }
 
-export class AudioElement extends BaseElement<
+export class AudioElement extends ContentElement<
   AudioObject,
   AudioElementProperties,
   AudioElementResolvedProperties,
@@ -717,9 +839,26 @@ export class AudioElement extends BaseElement<
 
     super.snap(propertyMatcher);
   }
+
+  protected resolvePropertyValue<
+    PropertyName extends keyof AudioElementResolvedProperties,
+  >(
+    propertyName: PropertyName,
+    propertyValue: AudioElementProperties[PropertyName],
+    elementType: AudioElementProperties['type'],
+    _object: AudioObject,
+    _options: unknown,
+  ): AudioElementResolvedProperties[PropertyName] {
+    return AudioElementResolvedProperties.resolveProperty(
+      propertyName,
+      propertyValue,
+      elementType,
+      { valueChanged: false },
+    );
+  }
 }
 
-export class VideoElement extends BaseElement<
+export class VideoElement extends ContentElement<
   VideoObject,
   VideoElementProperties,
   VideoElementResolvedProperties,
@@ -821,72 +960,228 @@ export class VideoElement extends BaseElement<
 
     super.snap(propertyMatcher);
   }
+
+  protected resolvePropertyValue<
+    PropertyName extends keyof VideoElementResolvedProperties,
+  >(
+    propertyName: PropertyName,
+    propertyValue: VideoElementProperties[PropertyName],
+    _elementType: VideoElementProperties['type'],
+    _object: VideoObject,
+    _options: unknown,
+  ): VideoElementResolvedProperties[PropertyName] {
+    return VideoElementResolvedProperties.resolveProperty(
+      propertyName,
+      propertyValue,
+      { valueChanged: false },
+    );
+  }
 }
 
-export class EffectElement extends BaseElement<
-  EffectObject,
-  EffectElementProperties,
-  EffectElementResolvedProperties,
-  unknown
-> {
+export class AnimationElement
+  implements Element<AnimationElementProperties, unknown>
+{
+  private properties: AnimationElementProperties | undefined;
+  private animation: Animation | undefined;
+
+  constructor(
+    private readonly elements: Map<string, Element<ElementProperties, unknown>>,
+    private readonly clock: Clock,
+  ) {}
+
+  *transition(
+    properties: AnimationElementProperties,
+    _options: unknown,
+  ): Generator<Promise<void>, void, void> {
+    const oldProperties = this.properties;
+    const oldAnimation = this.animation;
+    const newProperties = properties;
+
+    if (isEqual(oldProperties, newProperties)) {
+      yield Promise.resolve();
+      this.properties = newProperties;
+      return;
+    }
+
+    yield Promise.resolve();
+
+    oldAnimation?.finishOrCancel();
+
+    const resolvedProperties =
+      AnimationElementResolvedProperties.resolve(newProperties);
+    const matcher = resolvedProperties.value;
+    if (!matcher) {
+      this.properties = newProperties;
+      return;
+    }
+
+    const newAnimation = new Animation(
+      this.clock,
+      progress => {
+        let startKeyframe!: AnimationKeyframe;
+        let endKeyframe!: AnimationKeyframe;
+        const keyframes = resolvedProperties.keyframes;
+        for (let i = 1; i < keyframes.length; ++i) {
+          if (
+            progress < keyframes[i].offset ||
+            (progress === 1 && progress === keyframes[i].offset)
+          ) {
+            startKeyframe = keyframes[i - 1];
+            endKeyframe = keyframes[i];
+            break;
+          }
+        }
+        const fraction = progress - startKeyframe.offset;
+        this.elements.forEach((element, elementName) => {
+          element.animate(
+            matcher.getPropertyMatcher(elementName),
+            startKeyframe.value,
+            endKeyframe.value,
+            fraction,
+          );
+        });
+      },
+      () => {
+        this.animation = undefined;
+      },
+      resolvedProperties.duration,
+      resolvedProperties.easing,
+      resolvedProperties.delay,
+      0,
+      resolvedProperties.direction,
+      resolvedProperties.iterationCount,
+      resolvedProperties.iterationStart,
+    );
+    newAnimation.play();
+
+    this.properties = newProperties;
+    this.animation = newAnimation;
+  }
+
+  hasTransition(propertyMatcher: Matcher): boolean {
+    const animation = this.animation;
+    return (
+      propertyMatcher.match('playback') &&
+      !!animation &&
+      animation.iterationCount !== Infinity
+    );
+  }
+
+  async wait(propertyMatcher: Matcher) {
+    const animation = this.animation;
+    if (
+      propertyMatcher.match('playback') &&
+      animation &&
+      animation.iterationCount !== Infinity
+    ) {
+      await animation.finishedOrCanceled;
+    }
+  }
+
+  snap(propertyMatcher: Matcher) {
+    const animation = this.animation;
+    if (
+      propertyMatcher.match('playback') &&
+      animation &&
+      animation.iterationCount !== Infinity
+    ) {
+      animation.finishOrCancel();
+    }
+  }
+
+  animate(
+    _propertyMatcher: Matcher,
+    _startValue: PropertyValue,
+    _endValue: PropertyValue,
+    _fraction: number,
+  ) {}
+
+  destroy() {
+    this.animation?.finishOrCancel();
+  }
+}
+
+export class EffectElement
+  implements Element<EffectElementProperties, unknown>
+{
+  private properties: EffectElementProperties | undefined;
+  private effect: Effect | undefined;
+
   constructor(
     private readonly effectElement: HTMLElement,
     private readonly effectOverlayElement: HTMLElement,
     private readonly index: number,
     private readonly animateElement: AnimateElement,
-    clock: Clock,
-  ) {
-    super(clock, false);
-  }
+    private readonly clock: Clock,
+  ) {}
 
-  protected resolveProperties(
+  *transition(
     properties: EffectElementProperties,
-    _object: EffectObject,
-    valueChanged: boolean,
     _options: unknown,
-  ): EffectElementResolvedProperties {
-    return EffectElementResolvedProperties.resolve(properties, {
-      valueChanged,
-    });
-  }
+  ): Generator<Promise<void>, void, void> {
+    const oldProperties = this.properties;
+    const oldEffect = this.effect;
+    const newProperties = properties;
 
-  protected async createObject(
-    _type: string,
-    value: string,
-  ): Promise<EffectObject> {
-    const object = EffectObject.create(
-      value,
+    if (isEqual(oldProperties, newProperties)) {
+      yield Promise.resolve();
+      this.properties = newProperties;
+      return;
+    }
+
+    const resolvedProperties =
+      EffectElementResolvedProperties.resolve(newProperties);
+    if (!resolvedProperties.value) {
+      yield Promise.resolve();
+      this.properties = newProperties;
+      return;
+    }
+
+    const newEffect = Effect.create(
+      resolvedProperties.value,
+      resolvedProperties.parameters,
       this.effectElement,
       this.effectOverlayElement,
       this.index,
+      this.clock,
       this.animateElement,
     );
-    await object.load();
-    return object;
+    yield newEffect.load();
+
+    oldEffect?.finish();
+    newEffect.play();
+
+    this.properties = newProperties;
+    this.effect = newEffect;
   }
 
-  protected destroyObject(_object: EffectObject) {}
-
-  protected attachObject(object: EffectObject) {
-    object.attach();
+  hasTransition(propertyMatcher: Matcher): boolean {
+    return propertyMatcher.match('playback') && !!this.effect;
   }
 
-  protected detachObject(object: EffectObject) {
-    object.detach();
+  async wait(propertyMatcher: Matcher) {
+    const effect = this.effect;
+    if (propertyMatcher.match('playback') && effect) {
+      await effect.finished;
+    }
   }
 
-  protected getPropertyValue(
-    object: EffectObject,
-    propertyName: keyof EffectElementResolvedProperties,
-  ): EffectElementResolvedProperties[keyof EffectElementResolvedProperties] {
-    return object.getPropertyValue(propertyName);
+  snap(propertyMatcher: Matcher) {
+    const effect = this.effect;
+    if (propertyMatcher.match('playback') && effect) {
+      effect.finish();
+      this.effect = undefined;
+    }
   }
 
-  protected setPropertyValue(
-    object: EffectObject,
-    propertyName: keyof EffectElementResolvedProperties,
-    propertyValue: EffectElementResolvedProperties[keyof EffectElementResolvedProperties],
-  ) {
-    object.setPropertyValue(propertyName, propertyValue);
+  animate(
+    _propertyMatcher: Matcher,
+    _startValue: PropertyValue,
+    _endValue: PropertyValue,
+    _fraction: number,
+  ) {}
+
+  destroy() {
+    this.effect?.finish();
   }
 }

@@ -89,18 +89,24 @@ This specification defines the following groups of common elements that can be e
 - `sound`: A sound effect audio element, which is played once without transition.
 - `voice`: A voice audio element, which is played once without transition, added into backlog and may be and interrupted automatically.
 - `video`: A video element, which is played once without transition.
+- `animation`: An animation element, which can animate most properties of most elements.
 - `effect`: An effect element, which affects most image elements.
 
 ### Elements
 
 An element has at least the following properties:
 
-- `value: The primary value of the element.
+- `value`: The primary value of the element.
+
+## Content elements
+
+A content element has at least the following properties, in addition to those of an element:
+
 - `transition_*`: The transition properties for property changes of this object, similar to that of [CSS](https://developer.mozilla.org/en-US/docs/Web/CSS/transition). The default value should be a reasonable value but may vary by element, layout and implementation. The applicable values may also vary by element, layout and implementation.
 
 ### Image elements
 
-An image element has at least the following properties, in addition to those of an element:
+An image element has at least the following properties, in addition to those of a content element:
 
 - `value`: The source of the image.
 - `anchor_x`, `anchor_y`: The origin point of the image, measured as a absolute amount of pixels or a percentage of the image size, from the top-left corner of the image, and defaults to `(0, 0)` unless otherwise specified.
@@ -114,7 +120,7 @@ An image element has at least the following properties, in addition to those of 
 
 ### Text elements
 
-A text element has at least the following properties, in addition to those of an element:
+A text element has at least the following properties, in addition to those of a content element:
 
 - `value`: The value of the text. An implementation may support (a subset of) HTML syntax, e.g. the [`<ruby>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ruby) annotation element for furigana.
 
@@ -129,24 +135,39 @@ Choice elements are only shown in the `choice` layout.
 
 ### Audio elements
 
-An audio element has at least the following properties, in addition to those of an element:
+An audio element has at least the following properties, in addition to those of a content element:
 
 - `value`: The source of the audio.
 - `volume`: The volume of the audio as a ratio in `[0, 1]` or a percentage, and defaults to `1`.
 - `loop`: Whether the audio should be looped, and defaults to `false` unless otherwise specified.
+
+### Video elements
+
+A video element has at least the following properties, in addition to those of a content element:
+
+- `value`: The source of the audio.
+- `loop`: Whether the video should be looped, and defaults to `false` unless otherwise specified.
+
+### Animation elements
+
+An animation element has at least the following properties, in addition to those of an element:
+
+- `value`: The target element property of the animation. An element property is specified as a `element.property` pair, which may also be a glob pattern. Specifying an element without a property implies all properties of the element.
+- `duration`: The duration of the animation, and defaults to `0` unless otherwise specified.
+- `easing`: The easing of the animation, and defaults to `linear` unless otherwise specified.
+- `delay`: The delay of the animation, and defaults to `0` unless otherwise specified.
+- `direction`: The direction of the animation, can be one of `normal`, `reverse`, `alternate` and `alternate_reverse`, and defaults to `normal` unless otherwise specified.
+- `iteration_count`:  The iteration count of the animation, and defaults to `1` unless otherwise specified.
+- `iteration_start`: The iteration start of the animation, and defaults to `0` unless otherwise specified.
+- `offset_#`: The offset of the `#`th keyframe of the animation, and defaults to `0` for the first keyframe, `1` for the last keyframe, or equally divides up unspecified progress for the other keyframes unless otherwise specified.
+- `value_#`: The value of the `#`th keyframe of the animation.
 
 ### Effect elements
 
 An effect element has at least the following properties, in addition to those of an element:
 
 - `value`: The name of the effect.
-
-### Video elements
-
-A video element has at least the following properties, in addition to those of an element:
-
-- `value`: The source of the audio.
-- `loop`: Whether the video should be looped, and defaults to `false` unless otherwise specified.
+- `parameters`: Parameters for the effect, and defaults to empty unless otherwise specified.
 
 ## Layout
 

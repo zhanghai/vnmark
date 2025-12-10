@@ -1,5 +1,5 @@
+import { Animation } from '../animation';
 import { ELEMENT_TYPES, ElementType } from '../engine';
-import { Transition } from '../transition';
 import { Arrays2, HTMLElements, Maps } from '../util';
 import { Clock } from './Clock';
 import { ViewError } from './View';
@@ -23,8 +23,7 @@ export class Layout {
 
   private layoutName = 'none';
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private readonly transitions: Transition<any>[] = [];
+  private readonly transitions: Animation[] = [];
 
   constructor(
     rootElement: HTMLElement,
@@ -237,28 +236,28 @@ export class Layout {
     opacity: number,
     transitionDuration: number,
   ) {
-    const transition = new Transition(
-      HTMLElements.getOpacity(element),
-      opacity,
+    const currentOpacity = HTMLElements.getOpacity(element);
+    const transition = new Animation(
+      this.clock,
+      progress => {
+        const progressOpacity =
+          currentOpacity + progress * (opacity - currentOpacity);
+        HTMLElements.setOpacity(element, progressOpacity);
+      },
+      () => Arrays2.remove(this.transitions, transition),
       transitionDuration,
-    )
-      .addOnUpdateCallback(it => HTMLElements.setOpacity(element, it))
-      .addOnEndCallback(() => {
-        Arrays2.remove(this.transitions, transition);
-        this.clock.removeFrameCallback(transition);
-      });
+    );
     this.transitions.push(transition);
-    this.clock.addFrameCallback(transition, it => transition.update(it));
-    transition.start();
+    transition.play();
   }
 
   async wait(): Promise<void> {
-    await Promise.all(this.transitions.map(it => it.asPromise()));
+    await Promise.all(this.transitions.map(it => it.finishedOrCanceled));
   }
 
   snap() {
     for (const transition of Array.from(this.transitions)) {
-      transition.cancel();
+      transition.finishOrCancel();
     }
   }
 }

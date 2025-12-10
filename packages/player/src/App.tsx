@@ -39,7 +39,7 @@ function App() {
             //const directory = await window.showDirectoryPicker();
             (event.target as HTMLElement).remove();
             //await playPackage(await FileSystemPackage.read(directory));
-            await playPackage(await HttpPackage.read('flowers_01r'));
+            await playPackage(await HttpPackage.read('flowers_02r'));
           }}>
           Load
         </button>

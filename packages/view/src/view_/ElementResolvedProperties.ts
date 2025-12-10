@@ -1,10 +1,21 @@
 import {
+  AnimationDirection,
+  AnimationEasing,
+  CssEasings,
+  LinearEasing,
+} from '../animation';
+import {
   AngleValue,
+  AnimationDirectionName as AnimationDirectionName,
+  AnimationElementProperties,
   AudioElementProperties,
+  BaseContentElementProperties,
   BaseElementProperties,
   BooleanValue,
   ChoiceElementProperties,
   EffectElementProperties,
+  ElementPropertyMatcher,
+  EnumValue,
   ImageElementProperties,
   LengthValue,
   NoneValue,
@@ -22,18 +33,15 @@ import { ViewError } from './View';
 export function resolveElementValue(
   properties: BaseElementProperties,
 ): string | undefined {
-  const value = resolvePropertyValue(
+  const valueOrNone = resolvePropertyValue(
     properties.value,
     it => NoneValue.resolve(it) ?? StringValue.resolve(it),
   );
-  if (value === NoneValue.VALUE) {
-    return undefined;
-  }
-  return value;
+  return valueOrNone !== NoneValue.VALUE ? valueOrNone : undefined;
 }
 
 export function resolveElementTransitionDuration(
-  properties: BaseElementProperties,
+  properties: BaseContentElementProperties,
   elementCount: number,
 ): number {
   let defaultTransitionDuration: number;
@@ -61,7 +69,6 @@ export function resolveElementTransitionDuration(
     case 'sound':
     case 'voice':
     case 'video':
-    case 'effect':
       defaultTransitionDuration = 0;
       break;
     default:
@@ -76,9 +83,9 @@ export function resolveElementTransitionDuration(
 }
 
 export function resolveElementPropertyTransitionEasing(
-  properties: BaseElementProperties,
+  properties: BaseContentElementProperties,
   propertyName: string,
-): string {
+): AnimationEasing {
   let defaultTransitionEasing = 'ease';
   switch (properties.type) {
     case 'background':
@@ -120,20 +127,13 @@ export function resolveElementPropertyTransitionEasing(
           break;
       }
       break;
-    case 'effect':
-      switch (propertyName) {
-        case 'value':
-          defaultTransitionEasing = 'linear';
-          break;
-      }
-      break;
     default:
       throw new ViewError(`Unexpected element type "${properties.type}"`);
   }
-  return (
+  return resolveEasing(
     resolvePropertyValue(properties.transitionEasing, it =>
       StringValue.resolve(it),
-    ) ?? defaultTransitionEasing
+    ) ?? defaultTransitionEasing,
   );
 }
 
@@ -172,135 +172,263 @@ export namespace ImageElementResolvedProperties {
     properties: ImageElementProperties,
     options: ResolveOptions,
   ): ImageElementResolvedProperties {
-    const value = options.valueChanged ? 0 : 1;
-    const anchorX =
-      resolvePropertyValue(
-        properties.anchorX,
-        it =>
-          ZeroValue.resolve(it) ??
-          LengthValue.resolve(it) ??
-          PercentageValue.resolve(it, options.imageWidth),
-      ) ?? (properties.type === 'figure' ? options.imageWidth / 2 : 0);
-    const anchorY =
-      resolvePropertyValue(
-        properties.anchorY,
-        it =>
-          ZeroValue.resolve(it) ??
-          LengthValue.resolve(it) ??
-          PercentageValue.resolve(it, options.imageHeight),
-      ) ?? (properties.type === 'figure' ? options.imageHeight : 0);
-    let defaultPositionX;
-    let defaultPositionY;
-    switch (properties.type) {
-      case 'figure':
-        defaultPositionX =
-          (options.figureIndex! / (options.figureCount! + 1)) *
-          options.screenWidth;
-        defaultPositionY = options.screenHeight;
-        break;
-      case 'avatar':
-        defaultPositionX = options.avatarPositionX!;
-        defaultPositionY = options.avatarPositionY!;
-        break;
-      default:
-        defaultPositionX = 0;
-        defaultPositionY = 0;
-    }
-    const positionX =
-      resolvePropertyValue(
-        properties.positionX,
-        it =>
-          ZeroValue.resolve(it) ??
-          LengthValue.resolve(it) ??
-          PercentageValue.resolve(it, options.screenWidth),
-      ) ?? defaultPositionX;
-    const positionY =
-      resolvePropertyValue(
-        properties.positionY,
-        it =>
-          ZeroValue.resolve(it) ??
-          LengthValue.resolve(it) ??
-          PercentageValue.resolve(it, options.screenHeight),
-      ) ?? defaultPositionY;
-    const offsetX =
-      resolvePropertyValue(
-        properties.offsetX,
-        it =>
-          ZeroValue.resolve(it) ??
-          LengthValue.resolve(it) ??
-          PercentageValue.resolve(it, options.screenWidth),
-      ) ?? (properties.type === 'figure' ? options.screenWidth : 0);
-    const offsetY =
-      resolvePropertyValue(
-        properties.offsetY,
-        it =>
-          ZeroValue.resolve(it) ??
-          LengthValue.resolve(it) ??
-          PercentageValue.resolve(it, options.screenHeight),
-      ) ?? (properties.type === 'figure' ? options.screenHeight : 0);
-    const pivotX =
-      resolvePropertyValue(
-        properties.pivotX,
-        it =>
-          ZeroValue.resolve(it) ??
-          LengthValue.resolve(it) ??
-          PercentageValue.resolve(it, options.imageWidth),
-      ) ?? options.imageWidth / 2;
-    const pivotY =
-      resolvePropertyValue(
-        properties.pivotY,
-        it =>
-          ZeroValue.resolve(it) ??
-          LengthValue.resolve(it) ??
-          PercentageValue.resolve(it, options.imageHeight),
-      ) ?? options.imageHeight / 2;
-    const scaleX =
-      resolvePropertyValue(
-        properties.scaleX,
-        it => NumberValue.resolve(it) ?? PercentageValue.resolve(it, 1),
-      ) ?? 1;
-    const scaleY =
-      resolvePropertyValue(
-        properties.scaleY,
-        it => NumberValue.resolve(it) ?? PercentageValue.resolve(it, 1),
-      ) ?? 1;
-    const skewX =
-      resolvePropertyValue(
-        properties.skewX,
-        it => ZeroValue.resolve(it) ?? AngleValue.resolve(it),
-      ) ?? 0;
-    const skewY =
-      resolvePropertyValue(
-        properties.skewY,
-        it => ZeroValue.resolve(it) ?? AngleValue.resolve(it),
-      ) ?? 0;
-    const rotation =
-      resolvePropertyValue(
-        properties.rotation,
-        it => ZeroValue.resolve(it) ?? AngleValue.resolve(it),
-      ) ?? 0;
-    const alpha =
-      resolvePropertyValue(
-        properties.alpha,
-        it => NumberValue.resolve(it) ?? PercentageValue.resolve(it, 1),
-      ) ?? 1;
     return {
-      value,
-      anchorX,
-      anchorY,
-      positionX,
-      positionY,
-      offsetX,
-      offsetY,
-      pivotX,
-      pivotY,
-      scaleX,
-      scaleY,
-      skewX,
-      skewY,
-      rotation,
-      alpha,
+      value: resolveProperty(
+        'value',
+        properties.value,
+        properties.type,
+        options,
+      ),
+      anchorX: resolveProperty(
+        'anchorX',
+        properties.anchorX,
+        properties.type,
+        options,
+      ),
+      anchorY: resolveProperty(
+        'anchorY',
+        properties.anchorY,
+        properties.type,
+        options,
+      ),
+      positionX: resolveProperty(
+        'positionX',
+        properties.positionX,
+        properties.type,
+        options,
+      ),
+      positionY: resolveProperty(
+        'positionY',
+        properties.positionY,
+        properties.type,
+        options,
+      ),
+      offsetX: resolveProperty(
+        'offsetX',
+        properties.offsetX,
+        properties.type,
+        options,
+      ),
+      offsetY: resolveProperty(
+        'offsetY',
+        properties.offsetY,
+        properties.type,
+        options,
+      ),
+      pivotX: resolveProperty(
+        'pivotX',
+        properties.pivotX,
+        properties.type,
+        options,
+      ),
+      pivotY: resolveProperty(
+        'pivotY',
+        properties.pivotY,
+        properties.type,
+        options,
+      ),
+      scaleX: resolveProperty(
+        'scaleX',
+        properties.scaleX,
+        properties.type,
+        options,
+      ),
+      scaleY: resolveProperty(
+        'scaleY',
+        properties.scaleY,
+        properties.type,
+        options,
+      ),
+      skewX: resolveProperty(
+        'skewX',
+        properties.skewX,
+        properties.type,
+        options,
+      ),
+      skewY: resolveProperty(
+        'skewY',
+        properties.skewY,
+        properties.type,
+        options,
+      ),
+      rotation: resolveProperty(
+        'rotation',
+        properties.rotation,
+        properties.type,
+        options,
+      ),
+      alpha: resolveProperty(
+        'alpha',
+        properties.alpha,
+        properties.type,
+        options,
+      ),
     };
+  }
+
+  export function resolveProperty<
+    PropertyName extends keyof ImageElementProperties &
+      keyof ImageElementResolvedProperties,
+  >(
+    propertyName: PropertyName,
+    propertyValue: ImageElementProperties[PropertyName],
+    elementType: ImageElementProperties['type'],
+    options: ResolveOptions,
+  ): ImageElementResolvedProperties[PropertyName] {
+    switch (propertyName) {
+      case 'value':
+        return options.valueChanged ? 0 : 1;
+      case 'anchorX':
+        return (
+          resolvePropertyValue(
+            propertyValue,
+            it =>
+              ZeroValue.resolve(it) ??
+              LengthValue.resolve(it) ??
+              PercentageValue.resolve(it, options.imageWidth),
+          ) ?? (elementType === 'figure' ? options.imageWidth / 2 : 0)
+        );
+      case 'anchorY':
+        return (
+          resolvePropertyValue(
+            propertyValue,
+            it =>
+              ZeroValue.resolve(it) ??
+              LengthValue.resolve(it) ??
+              PercentageValue.resolve(it, options.imageHeight),
+          ) ?? (elementType === 'figure' ? options.imageHeight : 0)
+        );
+      case 'positionX': {
+        let defaultPositionX;
+        switch (elementType) {
+          case 'figure':
+            defaultPositionX =
+              (options.figureIndex! / (options.figureCount! + 1)) *
+              options.screenWidth;
+            break;
+          case 'avatar':
+            defaultPositionX = options.avatarPositionX!;
+            break;
+          default:
+            defaultPositionX = 0;
+        }
+        return (
+          resolvePropertyValue(
+            propertyValue,
+            it =>
+              ZeroValue.resolve(it) ??
+              LengthValue.resolve(it) ??
+              PercentageValue.resolve(it, options.screenWidth),
+          ) ?? defaultPositionX
+        );
+      }
+      case 'positionY': {
+        let defaultPositionY;
+        switch (elementType) {
+          case 'figure':
+            defaultPositionY = options.screenHeight;
+            break;
+          case 'avatar':
+            defaultPositionY = options.avatarPositionY!;
+            break;
+          default:
+            defaultPositionY = 0;
+        }
+        return (
+          resolvePropertyValue(
+            propertyValue,
+            it =>
+              ZeroValue.resolve(it) ??
+              LengthValue.resolve(it) ??
+              PercentageValue.resolve(it, options.screenHeight),
+          ) ?? defaultPositionY
+        );
+      }
+      case 'offsetX':
+        return (
+          resolvePropertyValue(
+            propertyValue,
+            it =>
+              ZeroValue.resolve(it) ??
+              LengthValue.resolve(it) ??
+              PercentageValue.resolve(it, options.screenWidth),
+          ) ?? (elementType === 'figure' ? options.screenWidth : 0)
+        );
+      case 'offsetY':
+        return (
+          resolvePropertyValue(
+            propertyValue,
+            it =>
+              ZeroValue.resolve(it) ??
+              LengthValue.resolve(it) ??
+              PercentageValue.resolve(it, options.screenHeight),
+          ) ?? (elementType === 'figure' ? options.screenHeight : 0)
+        );
+      case 'pivotX':
+        return (
+          resolvePropertyValue(
+            propertyValue,
+            it =>
+              ZeroValue.resolve(it) ??
+              LengthValue.resolve(it) ??
+              PercentageValue.resolve(it, options.imageWidth),
+          ) ?? options.imageWidth / 2
+        );
+      case 'pivotY':
+        return (
+          resolvePropertyValue(
+            propertyValue,
+            it =>
+              ZeroValue.resolve(it) ??
+              LengthValue.resolve(it) ??
+              PercentageValue.resolve(it, options.imageHeight),
+          ) ?? options.imageHeight / 2
+        );
+      case 'scaleX':
+        return (
+          resolvePropertyValue(
+            propertyValue,
+            it => NumberValue.resolve(it) ?? PercentageValue.resolve(it, 1),
+          ) ?? 1
+        );
+      case 'scaleY':
+        return (
+          resolvePropertyValue(
+            propertyValue,
+            it => NumberValue.resolve(it) ?? PercentageValue.resolve(it, 1),
+          ) ?? 1
+        );
+      case 'skewX':
+        return (
+          resolvePropertyValue(
+            propertyValue,
+            it => ZeroValue.resolve(it) ?? AngleValue.resolve(it),
+          ) ?? 0
+        );
+      case 'skewY':
+        return (
+          resolvePropertyValue(
+            propertyValue,
+            it => ZeroValue.resolve(it) ?? AngleValue.resolve(it),
+          ) ?? 0
+        );
+      case 'rotation':
+        return (
+          resolvePropertyValue(
+            propertyValue,
+            it => ZeroValue.resolve(it) ?? AngleValue.resolve(it),
+          ) ?? 0
+        );
+      case 'alpha':
+        return (
+          resolvePropertyValue(
+            propertyValue,
+            it => NumberValue.resolve(it) ?? PercentageValue.resolve(it, 1),
+          ) ?? 1
+        );
+      default:
+        throw new ViewError(`Unexpected property name "${propertyName}"`);
+    }
   }
 }
 
@@ -314,11 +442,28 @@ export namespace TextElementResolvedProperties {
   }
 
   export function resolve(
-    _properties: TextElementProperties,
+    properties: TextElementProperties,
     options: ResolveOptions,
   ): TextElementResolvedProperties {
-    const value = options.valueChanged ? 0 : 1;
-    return { value };
+    return { value: resolveProperty('value', properties.value, options) };
+  }
+
+  export function resolveProperty<
+    PropertyName extends keyof TextElementProperties &
+      keyof TextElementResolvedProperties,
+  >(
+    propertyName: PropertyName,
+    _propertyValue: TextElementProperties[PropertyName],
+    options: ResolveOptions,
+  ): TextElementResolvedProperties[PropertyName] {
+    switch (propertyName) {
+      case 'value':
+        return (
+          options.valueChanged ? 0 : 1
+        ) as TextElementResolvedProperties[PropertyName];
+      default:
+        throw new ViewError(`Unexpected property name "${propertyName}"`);
+    }
   }
 }
 
@@ -337,15 +482,37 @@ export namespace ChoiceElementResolvedProperties {
     properties: ChoiceElementProperties,
     options: ResolveOptions,
   ): ChoiceElementResolvedProperties {
-    const value = options.valueChanged ? 0 : 1;
-    const enabled =
-      resolvePropertyValue(properties.enabled, it =>
-        BooleanValue.resolve(it),
-      ) ?? true;
-    const script =
-      resolvePropertyValue(properties.script, it => StringValue.resolve(it)) ??
-      '';
-    return { value, enabled, script };
+    return {
+      value: resolveProperty('value', properties.value, options),
+      enabled: resolveProperty('enabled', properties.enabled, options),
+      script: resolveProperty('script', properties.script, options),
+    };
+  }
+
+  export function resolveProperty<
+    PropertyName extends keyof ChoiceElementProperties &
+      keyof ChoiceElementResolvedProperties,
+  >(
+    propertyName: PropertyName,
+    propertyValue: ChoiceElementProperties[PropertyName],
+    options: ResolveOptions,
+  ): ChoiceElementResolvedProperties[PropertyName] {
+    switch (propertyName) {
+      case 'value':
+        return (
+          options.valueChanged ? 0 : 1
+        ) as ChoiceElementResolvedProperties[PropertyName];
+      case 'enabled':
+        return (resolvePropertyValue(propertyValue, it =>
+          BooleanValue.resolve(it),
+        ) ?? true) as ChoiceElementResolvedProperties[PropertyName];
+      case 'script':
+        return (resolvePropertyValue(propertyValue, it =>
+          StringValue.resolve(it),
+        ) ?? '') as ChoiceElementResolvedProperties[PropertyName];
+      default:
+        throw new ViewError(`Unexpected property name "${propertyName}"`);
+    }
   }
 }
 
@@ -364,24 +531,58 @@ export namespace AudioElementResolvedProperties {
     properties: AudioElementProperties,
     options: ResolveOptions,
   ): AudioElementResolvedProperties {
-    const value = options.valueChanged ? 0 : 1;
-    const volume =
-      resolvePropertyValue(
+    return {
+      value: resolveProperty(
+        'value',
+        properties.value,
+        properties.type,
+        options,
+      ),
+      volume: resolveProperty(
+        'volume',
         properties.volume,
-        it => NumberValue.resolve(it) ?? PercentageValue.resolve(it, 1),
-      ) ?? 1;
-    let defaultLoop: boolean;
-    switch (properties.type) {
-      case 'music':
-        defaultLoop = true;
-        break;
+        properties.type,
+        options,
+      ),
+      loop: resolveProperty('loop', properties.loop, properties.type, options),
+    };
+  }
+
+  export function resolveProperty<
+    PropertyName extends keyof AudioElementProperties &
+      keyof AudioElementResolvedProperties,
+  >(
+    propertyName: PropertyName,
+    propertyValue: AudioElementProperties[PropertyName],
+    elementType: AudioElementProperties['type'],
+    options: ResolveOptions,
+  ): AudioElementResolvedProperties[PropertyName] {
+    switch (propertyName) {
+      case 'value':
+        return (
+          options.valueChanged ? 0 : 1
+        ) as AudioElementResolvedProperties[PropertyName];
+      case 'volume':
+        return (resolvePropertyValue(
+          propertyValue,
+          it => NumberValue.resolve(it) ?? PercentageValue.resolve(it, 1),
+        ) ?? 1) as AudioElementResolvedProperties[PropertyName];
+      case 'loop': {
+        let defaultLoop: boolean;
+        switch (elementType) {
+          case 'music':
+            defaultLoop = true;
+            break;
+          default:
+            defaultLoop = false;
+        }
+        return (resolvePropertyValue(propertyValue, it =>
+          BooleanValue.resolve(it),
+        ) ?? defaultLoop) as AudioElementResolvedProperties[PropertyName];
+      }
       default:
-        defaultLoop = false;
+        throw new ViewError(`Unexpected property name "${propertyName}"`);
     }
-    const loop =
-      resolvePropertyValue(properties.loop, it => BooleanValue.resolve(it)) ??
-      defaultLoop;
-    return { value, volume, loop };
   }
 }
 
@@ -401,39 +602,243 @@ export namespace VideoElementResolvedProperties {
     properties: VideoElementProperties,
     options: ResolveOptions,
   ): VideoElementResolvedProperties {
-    const value = options.valueChanged ? 0 : 1;
-    const alpha =
+    return {
+      value: resolveProperty('value', properties.value, options),
+      alpha: resolveProperty('alpha', properties.alpha, options),
+      volume: resolveProperty('volume', properties.volume, options),
+      loop: resolveProperty('loop', properties.loop, options),
+    };
+  }
+
+  export function resolveProperty<
+    PropertyName extends keyof VideoElementProperties &
+      keyof VideoElementResolvedProperties,
+  >(
+    propertyName: PropertyName,
+    propertyValue: VideoElementProperties[PropertyName],
+    options: ResolveOptions,
+  ): VideoElementResolvedProperties[PropertyName] {
+    switch (propertyName) {
+      case 'value':
+        return (
+          options.valueChanged ? 0 : 1
+        ) as VideoElementResolvedProperties[PropertyName];
+      case 'alpha':
+        return (resolvePropertyValue(
+          propertyValue,
+          it => NumberValue.resolve(it) ?? PercentageValue.resolve(it, 1),
+        ) ?? 1) as VideoElementResolvedProperties[PropertyName];
+      case 'volume':
+        return (resolvePropertyValue(
+          propertyValue,
+          it => NumberValue.resolve(it) ?? PercentageValue.resolve(it, 1),
+        ) ?? 1) as VideoElementResolvedProperties[PropertyName];
+      case 'loop':
+        return (resolvePropertyValue(propertyValue, it =>
+          BooleanValue.resolve(it),
+        ) ?? false) as VideoElementResolvedProperties[PropertyName];
+      default:
+        throw new ViewError(`Unexpected property name "${propertyName}"`);
+    }
+  }
+}
+
+export interface AnimationKeyframe {
+  offset: number;
+  value: PropertyValue;
+}
+
+export interface AnimationElementResolvedProperties {
+  readonly value: ElementPropertyMatcher | undefined;
+  readonly duration: number;
+  readonly easing: AnimationEasing;
+  readonly delay: number;
+  readonly direction: AnimationDirection;
+  readonly iterationCount: number;
+  readonly iterationStart: number;
+  readonly keyframes: AnimationKeyframe[];
+}
+
+export namespace AnimationElementResolvedProperties {
+  export function resolve(
+    properties: AnimationElementProperties,
+  ): AnimationElementResolvedProperties {
+    const valueString = resolveElementValue(properties);
+    const value = valueString
+      ? ElementPropertyMatcher.parse(valueString)
+      : undefined;
+    const duration =
       resolvePropertyValue(
-        properties.alpha,
-        it => NumberValue.resolve(it) ?? PercentageValue.resolve(it, 1),
-      ) ?? 1;
-    const volume =
+        properties.duration,
+        it => ZeroValue.resolve(it) ?? TimeValue.resolve(it, 1),
+      ) ?? 0;
+    const easing = resolveEasing(
+      resolvePropertyValue(properties.easing, it => StringValue.resolve(it)) ??
+        'linear',
+    );
+    const delay =
       resolvePropertyValue(
-        properties.volume,
-        it => NumberValue.resolve(it) ?? PercentageValue.resolve(it, 1),
+        properties.delay,
+        it => ZeroValue.resolve(it) ?? TimeValue.resolve(it, 1),
+      ) ?? 0;
+    const direction = resolveDirection(
+      resolvePropertyValue(properties.direction, it =>
+        EnumValue.resolve<AnimationDirectionName>(it),
+      ) ?? 'normal',
+    );
+    const iterationCount =
+      resolvePropertyValue(properties.iterationCount, it =>
+        NumberValue.resolve(it),
       ) ?? 1;
-    const loop =
-      resolvePropertyValue(properties.loop, it => BooleanValue.resolve(it)) ??
-      false;
-    return { value, alpha, volume, loop };
+    const iterationStart =
+      resolvePropertyValue(properties.iterationStart, it =>
+        NumberValue.resolve(it),
+      ) ?? 0;
+    const keyframes = resolveKeyframes(properties, !!value);
+    return {
+      value,
+      duration,
+      easing,
+      delay,
+      direction,
+      iterationCount,
+      iterationStart,
+      keyframes,
+    };
+  }
+
+  function resolveDirection(
+    animationDirectionName: AnimationDirectionName,
+  ): AnimationDirection {
+    switch (animationDirectionName) {
+      case 'normal':
+        return AnimationDirection.NORMAL;
+      case 'reverse':
+        return AnimationDirection.REVERSE;
+      case 'alternate':
+        return AnimationDirection.ALTERNATE;
+      case 'alternate_reverse':
+        return AnimationDirection.ALTERNATE_REVERSE;
+    }
+  }
+
+  function resolveKeyframes(
+    properties: AnimationElementProperties,
+    isRequired: boolean,
+  ): AnimationKeyframe[] {
+    const offsets: (number | undefined)[] = [];
+    const values: (PropertyValue | undefined)[] = [];
+    for (const [propertyName, propertyValue] of Object.entries(properties)) {
+      const offsetMatch = propertyName.match(/^offset_([1-9][0-9]*)$/);
+      if (offsetMatch) {
+        const [, indexString] = offsetMatch;
+        const index = Number(indexString) - 1;
+        const offsetValue = resolvePropertyValue(
+          propertyValue,
+          it => NumberValue.resolve(it) ?? PercentageValue.resolve(it, 1),
+        );
+        offsets[index] = offsetValue;
+        continue;
+      }
+      const valueMatch = propertyName.match(/^value_([1-9][0-9]*)$/);
+      if (valueMatch) {
+        const [, indexString] = valueMatch;
+        const index = Number(indexString) - 1;
+        values[index] = propertyValue;
+        continue;
+      }
+    }
+    if (!isRequired && !offsets.length && !values.length) {
+      return [];
+    }
+    if (values.length < 2) {
+      throw new ViewError(`Animation must have at least 2 keyframes`);
+    }
+    const missingValueIndex = values.findIndex(it => it === undefined);
+    if (missingValueIndex !== -1) {
+      throw new ViewError(`Missing value ${missingValueIndex}`);
+    }
+    if (offsets.length > values.length) {
+      throw new ViewError(`Missing value for offset ${offsets.length - 1}`);
+    }
+    if (offsets[0] === undefined) {
+      offsets[0] = 0;
+    } else if (offsets[0] !== 0) {
+      throw new ViewError(`The first offset must be 0 but is ${offsets[0]}`);
+    }
+    if (offsets[values.length - 1] === undefined) {
+      offsets[values.length - 1] = 1;
+    } else if (offsets[values.length - 1] !== 1) {
+      throw new ViewError(
+        `The last offset must be 1 but is ${offsets[values.length - 1]}`,
+      );
+    }
+    for (let i = 1, previousOffset = offsets[0]; i < offsets.length; ++i) {
+      const offset = offsets[i];
+      if (offset === undefined) {
+        continue;
+      }
+      if (offset < 0 || offset > 1) {
+        throw new ViewError(`Offset ${i} (${offsets[i]}) must be in [0, 1]`);
+      }
+      if (offset <= previousOffset) {
+        throw new ViewError(
+          `Offset ${i} (${offsets[i]}) must be greater than its previous offset (${previousOffset})`,
+        );
+      }
+      previousOffset = offset;
+    }
+    for (let preGapIndex = 0; preGapIndex < offsets.length - 1; ) {
+      while (
+        preGapIndex + 1 < offsets.length - 1 &&
+        offsets[preGapIndex + 1] !== undefined
+      ) {
+        ++preGapIndex;
+      }
+      let postGapIndex = preGapIndex + 1;
+      while (
+        postGapIndex < offsets.length &&
+        offsets[postGapIndex] === undefined
+      ) {
+        ++postGapIndex;
+      }
+      for (let i = preGapIndex + 1; i < postGapIndex; ++i) {
+        offsets[i] =
+          ((i - preGapIndex) / (postGapIndex - preGapIndex)) *
+          (offsets[postGapIndex]! - offsets[preGapIndex]!);
+      }
+      preGapIndex = postGapIndex;
+    }
+    return offsets.map(
+      (offset, index) =>
+        ({
+          offset: offset!,
+          value: values[index]!,
+        }) satisfies AnimationKeyframe,
+    );
   }
 }
 
 export interface EffectElementResolvedProperties {
-  readonly value: number;
+  readonly value: string | undefined;
+  readonly parameters: unknown[];
 }
 
 export namespace EffectElementResolvedProperties {
-  export interface ResolveOptions {
-    valueChanged: boolean;
+  export function resolve(
+    properties: EffectElementProperties,
+  ): EffectElementResolvedProperties {
+    const value = resolveElementValue(properties);
+    const parameters = resolveParameters(
+      resolvePropertyValue(properties.parameters, it =>
+        StringValue.resolve(it),
+      ),
+    );
+    return { value, parameters };
   }
 
-  export function resolve(
-    _properties: EffectElementProperties,
-    options: ResolveOptions,
-  ): EffectElementResolvedProperties {
-    const value = options.valueChanged ? 0 : 1;
-    return { value };
+  function resolveParameters(parameters: string | undefined): unknown[] {
+    return parameters ? JSON.parse(`[${parameters}]`) : [];
   }
 }
 
@@ -449,4 +854,15 @@ function resolvePropertyValue<T extends PropertyValue, R>(
     throw new ViewError(`Unable to resolve value ${value}`);
   }
   return resolvedValue;
+}
+
+function resolveEasing(easingName: string): AnimationEasing {
+  switch (easingName) {
+    case 'linear':
+      return LinearEasing;
+    case 'ease':
+      return CssEasings.Ease;
+    default:
+      throw new ViewError(`Unsupported easing "${easingName}"`);
+  }
 }

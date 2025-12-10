@@ -3,10 +3,12 @@ export type ClockCallback = (time: number) => void;
 export abstract class Clock {
   abstract readonly time: number;
 
+  abstract hasFrameCallback(callbackId: unknown): boolean;
   abstract addFrameCallback(callback: ClockCallback): void;
   abstract addFrameCallback(callbackId: unknown, callback: ClockCallback): void;
   abstract removeFrameCallback(callbackId: unknown): void;
 
+  abstract hasTimeoutCallback(callbackId: unknown): boolean;
   abstract addTimeoutCallback(delay: number, callback: ClockCallback): void;
   abstract addTimeoutCallback(
     delay: number,
@@ -25,8 +27,6 @@ export abstract class Clock {
 }
 
 export class DOMClock extends Clock {
-  private _time = performance.now();
-
   private readonly frameCallbacks = new Map<unknown, ClockCallback>();
   private frameRequestId: number | undefined;
 
@@ -36,7 +36,11 @@ export class DOMClock extends Clock {
   >();
 
   get time(): number {
-    return this._time;
+    return document.timeline.currentTime as number;
+  }
+
+  hasFrameCallback(callbackId: unknown): boolean {
+    return this.frameCallbacks.has(callbackId);
   }
 
   addFrameCallback(
@@ -55,10 +59,9 @@ export class DOMClock extends Clock {
   private updateFrameRequest() {
     if (this.frameCallbacks.size) {
       if (this.frameRequestId === undefined) {
-        this.frameRequestId = requestAnimationFrame(timestamp => {
+        this.frameRequestId = requestAnimationFrame(() => {
           this.frameRequestId = undefined;
-          this._time = timestamp;
-          this.frameCallbacks.forEach(it => it(this._time));
+          this.frameCallbacks.forEach(it => it(this.time));
           this.updateFrameRequest();
         });
       }
@@ -70,6 +73,10 @@ export class DOMClock extends Clock {
     }
   }
 
+  hasTimeoutCallback(callbackId: unknown): boolean {
+    return this.timeoutCallbacks.has(callbackId);
+  }
+
   addTimeoutCallback(
     delay: number,
     callbackId: unknown,
@@ -77,9 +84,8 @@ export class DOMClock extends Clock {
   ) {
     this.removeTimeoutCallback(callbackId);
     const timeoutId = setTimeout(() => {
-      this._time = performance.now();
       this.timeoutCallbacks.delete(callbackId);
-      callback(this._time);
+      callback(this.time);
     }, delay);
     this.timeoutCallbacks.set(callbackId, [timeoutId, callback]);
   }
@@ -134,6 +140,10 @@ export class FrameClock extends Clock {
     });
   }
 
+  hasFrameCallback(callbackId: unknown): boolean {
+    return this.frameCallbacks.has(callbackId);
+  }
+
   addFrameCallback(
     callbackId: unknown,
     callback: ClockCallback = callbackId as ClockCallback,
@@ -143,6 +153,10 @@ export class FrameClock extends Clock {
 
   removeFrameCallback(callbackId: unknown) {
     this.frameCallbacks.delete(callbackId);
+  }
+
+  hasTimeoutCallback(callbackId: unknown): boolean {
+    return this.timeoutCallbacks.has(callbackId);
   }
 
   addTimeoutCallback(

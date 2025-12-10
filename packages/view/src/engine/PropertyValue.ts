@@ -132,24 +132,28 @@ export namespace BooleanValue {
   }
 }
 
-export interface NumberValue extends PropertyValue {
-  type: 'number';
-  value: number;
+export interface EnumValue<T extends string> extends PropertyValue {
+  type: 'enum';
+  value: T;
 }
 
-export namespace NumberValue {
-  export function parse(source: string): NumberValue | undefined {
-    const value = Number(source);
-    if (Number.isNaN(value)) {
+export namespace EnumValue {
+  export function parse<Enum extends string>(
+    source: string,
+    values: Enum[],
+  ): EnumValue<Enum> | undefined {
+    if (!(values as string[]).includes(source)) {
       return undefined;
     }
-    return { type: 'number', value };
+    return { type: 'enum', value: source as Enum };
   }
 
-  export function resolve(value: PropertyValue): number | undefined {
-    if (value.type === 'number') {
-      const number = value as NumberValue;
-      return number.value;
+  export function resolve<Enum extends string>(
+    value: PropertyValue,
+  ): Enum | undefined {
+    if (value.type === 'enum') {
+      const enumValue = value as EnumValue<Enum>;
+      return enumValue.value;
     }
     return undefined;
   }
@@ -182,6 +186,30 @@ export namespace LengthValue {
       }
     }
     return undefined;
+  }
+}
+
+export interface NumberValue extends PropertyValue {
+  type: 'number';
+  value: number;
+}
+
+export namespace NumberValue {
+  export function parse(source: string): NumberValue | undefined {
+    const value = Number(source);
+    if (Number.isNaN(value)) {
+      return undefined;
+    }
+    return { type: 'number', value };
+  }
+
+  export function resolve(value: PropertyValue): number | undefined {
+    if (value.type === 'number') {
+      const number = value as NumberValue;
+      return number.value;
+    }
+    // For compatibility with animation value which parses as ZeroValue first.
+    return ZeroValue.resolve(value);
   }
 }
 

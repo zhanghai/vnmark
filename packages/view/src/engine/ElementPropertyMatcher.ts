@@ -29,7 +29,12 @@ export class ElementPropertyMatcher {
 }
 
 export namespace ElementPropertyMatcher {
-  export function parse(input: string[]): ElementPropertyMatcher {
+  export function parse(input: string): ElementPropertyMatcher;
+  export function parse(input: string[]): ElementPropertyMatcher;
+  export function parse(input: string | string[]): ElementPropertyMatcher {
+    if (typeof input === 'string') {
+      input = [input];
+    }
     const matchers: [Matcher, Matcher][] = [];
     for (const elementPropertyName of input) {
       const elementAndPropertyNames = elementPropertyName.split(/\s*\.\s*/);

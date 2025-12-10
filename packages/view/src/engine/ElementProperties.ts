@@ -2,6 +2,7 @@ import { EngineError } from './Engine';
 import {
   AngleValue,
   BooleanValue,
+  EnumValue,
   InitialValue,
   LengthValue,
   NoneValue,
@@ -25,6 +26,7 @@ const CONST_ELEMENT_TYPES = [
   'sound',
   'voice',
   'video',
+  'animation',
   'effect',
 ] as const;
 
@@ -36,11 +38,14 @@ export interface BaseElementProperties {
   readonly type: ElementType;
   readonly index: number;
   readonly value?: NoneValue | StringValue;
+}
+
+export interface BaseContentElementProperties extends BaseElementProperties {
   readonly transitionDuration?: ZeroValue | TimeValue;
   readonly transitionEasing?: StringValue;
 }
 
-export interface ImageElementProperties extends BaseElementProperties {
+export interface ImageElementProperties extends BaseContentElementProperties {
   readonly type: 'background' | 'figure' | 'foreground' | 'avatar';
   readonly anchorX?: ZeroValue | LengthValue | PercentageValue;
   readonly anchorY?: ZeroValue | LengthValue | PercentageValue;
@@ -58,39 +63,73 @@ export interface ImageElementProperties extends BaseElementProperties {
   readonly alpha?: NumberValue | PercentageValue;
 }
 
-export interface TextElementProperties extends BaseElementProperties {
+export interface TextElementProperties extends BaseContentElementProperties {
   readonly type: 'name' | 'text' | 'choice';
 }
 
-export interface ChoiceElementProperties extends TextElementProperties {
+export interface ChoiceElementProperties extends BaseContentElementProperties {
   readonly type: 'choice';
   readonly enabled?: BooleanValue;
   readonly script?: StringValue;
 }
 
-export interface AudioElementProperties extends BaseElementProperties {
+export interface AudioElementProperties extends BaseContentElementProperties {
   readonly type: 'music' | 'sound' | 'voice';
   readonly volume?: NumberValue | PercentageValue;
   readonly loop?: BooleanValue;
 }
 
-export interface VideoElementProperties extends BaseElementProperties {
+export interface VideoElementProperties extends BaseContentElementProperties {
   readonly type: 'video';
   readonly alpha?: NumberValue | PercentageValue;
   readonly volume?: NumberValue | PercentageValue;
   readonly loop?: BooleanValue;
 }
 
-export interface EffectElementProperties extends BaseElementProperties {
-  readonly type: 'effect';
+const CONST_ANIMATION_DIRECTION_NAMES = [
+  'normal',
+  'reverse',
+  'alternate',
+  'alternate_reverse',
+] as const;
+
+export type AnimationDirectionName =
+  (typeof CONST_ANIMATION_DIRECTION_NAMES)[number];
+
+export const ANIMATION_DIRECTION_NAMES =
+  CONST_ANIMATION_DIRECTION_NAMES as unknown as AnimationDirectionName[];
+
+export interface AnimationElementProperties extends BaseElementProperties {
+  readonly type: 'animation';
+  readonly duration?: ZeroValue | TimeValue;
+  readonly easing?: StringValue;
+  readonly delay?: ZeroValue | TimeValue;
+  readonly direction?: EnumValue<AnimationDirectionName>;
+  readonly iterationCount?: NumberValue;
+  readonly iterationStart?: NumberValue;
+  readonly [_: `offset${number}`]: NumberValue | PercentageValue;
+  readonly [_: `value${number}`]:
+    | AngleValue
+    | LengthValue
+    | NumberValue
+    | PercentageValue;
 }
 
-export type ElementProperties =
+export interface EffectElementProperties extends BaseElementProperties {
+  readonly type: 'effect';
+  readonly parameters?: StringValue;
+}
+
+export type ContentElementProperties =
   | ImageElementProperties
   | TextElementProperties
   | ChoiceElementProperties
   | AudioElementProperties
-  | VideoElementProperties
+  | VideoElementProperties;
+
+export type ElementProperties =
+  | ContentElementProperties
+  | AnimationElementProperties
   | EffectElementProperties;
 
 export type Property = {
@@ -120,29 +159,45 @@ export namespace Property {
     const index = indexString ? Number(indexString) : 1;
     let name: string | undefined;
     let value: PropertyValue | undefined;
-    switch (propertyName) {
-      case 'value':
-        name = 'value';
-        value = parsePropertyValue(
-          propertyName,
-          propertyValue,
-          it => NoneValue.parse(it) ?? StringValue.parse(it),
-        );
-        break;
-      case 'transition_duration':
-        name = 'transitionDuration';
-        value = parsePropertyValue(
-          propertyName,
-          propertyValue,
-          it => ZeroValue.parse(it) ?? TimeValue.parse(it),
-        );
-        break;
-      case 'transition_easing':
-        name = 'transitionEasing';
-        value = parsePropertyValue(propertyName, propertyValue, it =>
-          StringValue.parse(it),
-        );
-        break;
+    if (propertyName === 'value') {
+      name = 'value';
+      value = parsePropertyValue(
+        propertyName,
+        propertyValue,
+        it => NoneValue.parse(it) ?? StringValue.parse(it),
+      );
+    }
+    if (name === undefined) {
+      switch (type) {
+        case 'background':
+        case 'figure':
+        case 'foreground':
+        case 'avatar':
+        case 'name':
+        case 'text':
+        case 'choice':
+        case 'music':
+        case 'sound':
+        case 'voice':
+        case 'video':
+          switch (propertyName) {
+            case 'transition_duration':
+              name = 'transitionDuration';
+              value = parsePropertyValue(
+                propertyName,
+                propertyValue,
+                it => ZeroValue.parse(it) ?? TimeValue.parse(it),
+              );
+              break;
+            case 'transition_easing':
+              name = 'transitionEasing';
+              value = parsePropertyValue(propertyName, propertyValue, it =>
+                StringValue.parse(it),
+              );
+              break;
+          }
+          break;
+      }
     }
     if (name === undefined) {
       switch (type) {
@@ -330,7 +385,74 @@ export namespace Property {
           break;
         case 'video':
           break;
+        case 'animation':
+          switch (propertyName) {
+            case 'delay':
+              name = 'delay';
+              value = parsePropertyValue(
+                propertyName,
+                propertyValue,
+                it => ZeroValue.parse(it) ?? TimeValue.parse(it),
+              );
+              break;
+            case 'direction':
+              name = 'direction';
+              value = parsePropertyValue(propertyName, propertyValue, it =>
+                EnumValue.parse(it, ANIMATION_DIRECTION_NAMES),
+              );
+              break;
+            case 'duration':
+              name = 'duration';
+              value = parsePropertyValue(
+                propertyName,
+                propertyValue,
+                it => NumberValue.parse(it) ?? TimeValue.parse(it),
+              );
+              break;
+            case 'easing':
+              name = 'easing';
+              value = parsePropertyValue(propertyName, propertyValue, it =>
+                StringValue.parse(it),
+              );
+              break;
+            case 'iteration_count':
+              name = 'iterationCount';
+              value = parsePropertyValue(propertyName, propertyValue, it =>
+                NumberValue.parse(it),
+              );
+              break;
+            default:
+              if (/^offset_[1-9][0-9]*$/.test(propertyName)) {
+                name = propertyName;
+                value = parsePropertyValue(
+                  propertyName,
+                  propertyValue,
+                  it => NumberValue.parse(it) ?? PercentageValue.parse(it),
+                );
+              } else if (/^value_[1-9][0-9]*$/.test(propertyName)) {
+                name = propertyName;
+                value = parsePropertyValue(
+                  propertyName,
+                  propertyValue,
+                  it =>
+                    ZeroValue.parse(it) ??
+                    AngleValue.parse(it) ??
+                    LengthValue.parse(it) ??
+                    NumberValue.parse(it) ??
+                    PercentageValue.parse(it),
+                );
+              }
+          }
+          break;
         case 'effect':
+          switch (propertyName) {
+            case 'parameters':
+              name = 'parameters';
+              value = parsePropertyValue(propertyName, propertyValue, it =>
+                StringValue.parse(it),
+              );
+              break;
+          }
           break;
         default:
           throw new EngineError(`Unexpected element type "${type}"`);
