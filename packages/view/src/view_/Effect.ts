@@ -17,24 +17,21 @@ export namespace Effect {
   export function create(
     value: string,
     parameters: unknown[],
-    effectElement: HTMLElement,
-    effectOverlayElement: HTMLElement,
-    index: number,
+    effectElements: Map<string, HTMLElement>,
     clock: Clock,
     animateElement: AnimateElement,
   ): Effect {
+    const effectElement = effectElements.get(value);
     switch (value) {
       case 'cross-fade':
         return new CrossFadeEffect(
-          effectElement,
-          effectOverlayElement,
-          index,
+          effectElement!,
           clock,
           (parameters as [number])[0],
         );
       case 'animate':
         return new AnimateEffect(
-          effectElement,
+          effectElement!,
           animateElement,
           parameters as Parameters<HTMLElement['animate']>,
         );
@@ -49,9 +46,7 @@ export class CrossFadeEffect extends Effect {
   private readonly element: HTMLElement;
 
   constructor(
-    effectElement: HTMLElement,
-    private readonly effectOverlayElement: HTMLElement,
-    private readonly index: number,
+    private readonly effectElement: HTMLElement,
     private readonly clock: Clock,
     private readonly duration: number,
   ) {
@@ -76,11 +71,7 @@ export class CrossFadeEffect extends Effect {
   }
 
   play() {
-    HTMLElements.insertWithOrder(
-      this.effectOverlayElement,
-      this.index,
-      this.element,
-    );
+    this.effectElement.insertAdjacentElement('afterend', this.element);
     const animation = new Animation(
       this.clock,
       progress => {

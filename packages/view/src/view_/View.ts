@@ -272,9 +272,7 @@ export class View {
             break;
           case 'effect':
             element = new EffectElement(
-              this.layout.effectElement,
-              this.layout.effectOverlayElement,
-              elementProperties.index,
+              this.layout.getEffectElements(layoutName),
               this.animateElement,
               this.clock,
             );

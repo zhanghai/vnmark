@@ -17,8 +17,10 @@ export class Layout {
     string,
     Map<ElementType, HTMLElement>
   >;
-  readonly effectElement: HTMLElement;
-  readonly effectOverlayElement: HTMLElement;
+  private readonly layoutTypeEffectElements: Map<
+    string,
+    Map<string, HTMLElement>
+  >;
   readonly pointerElement: HTMLElement;
 
   private layoutName = 'none';
@@ -61,11 +63,38 @@ export class Layout {
       this.layoutTypeTemplateElements = new Map();
     }
 
-    this.effectElement = this.requireElementById(rootElement, 'effect');
-    this.effectOverlayElement = this.requireElementById(
-      rootElement,
-      'effect-overlay',
-    );
+    this.layoutTypeEffectElements = new Map();
+    HTMLElements.forEachDescendant(rootElement, element => {
+      const effectType = element.dataset.effectType;
+      if (!effectType) {
+        return true;
+      }
+      const layoutNames =
+        HTMLElements.firstNonUndefinedOfAncestorsOrUndefined(
+          element,
+          rootElement,
+          it => {
+            const layoutNames = getElementLayoutNames(it);
+            return layoutNames.length ? layoutNames : undefined;
+          },
+        ) ?? this.layoutNames;
+      for (const layoutName of layoutNames) {
+        const effectElements = Maps.getOrSet(
+          this.layoutTypeEffectElements,
+          layoutName,
+          () => new Map(),
+        );
+        if (effectElements.has(effectType)) {
+          throw new ViewError(
+            `Duplicate effect "${effectType}" element for layout "${layoutName}"`,
+          );
+        }
+        effectElements.set(effectType, element);
+      }
+      // Effect type elements may be nested.
+      return true;
+    });
+
     this.pointerElement = this.requireElementById(rootElement, 'pointer');
   }
 
@@ -138,6 +167,10 @@ export class Layout {
     elementType: ElementType,
   ): HTMLElement | undefined {
     return this.layoutTypeTemplateElements.get(layoutName)?.get(elementType);
+  }
+
+  getEffectElements(layoutName: string): Map<string, HTMLElement> {
+    return this.layoutTypeEffectElements.get(layoutName) ?? new Map();
   }
 
   set(layoutName: string): ElementType[] {

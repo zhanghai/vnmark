@@ -1108,9 +1108,7 @@ export class EffectElement
   private effect: Effect | undefined;
 
   constructor(
-    private readonly effectElement: HTMLElement,
-    private readonly effectOverlayElement: HTMLElement,
-    private readonly index: number,
+    private readonly effectElements: Map<string, HTMLElement>,
     private readonly animateElement: AnimateElement,
     private readonly clock: Clock,
   ) {}
@@ -1140,9 +1138,7 @@ export class EffectElement
     const newEffect = Effect.create(
       resolvedProperties.value,
       resolvedProperties.parameters,
-      this.effectElement,
-      this.effectOverlayElement,
-      this.index,
+      this.effectElements,
       this.clock,
       this.animateElement,
     );
