@@ -13,6 +13,7 @@ export class RemotionAudioObject implements AudioObject {
 
   private _valueVolume = 1;
   private _propertyVolume = 1;
+  private _settingVolume = 1;
 
   constructor(
     clock: FrameClock,
@@ -72,8 +73,18 @@ export class RemotionAudioObject implements AudioObject {
     this.updateVolume();
   }
 
+  get settingVolume(): number {
+    return this._settingVolume;
+  }
+
+  set settingVolume(value: number) {
+    this._settingVolume = value;
+    this.updateVolume();
+  }
+
   private updateVolume() {
-    this.audio.volume = this._valueVolume * this._propertyVolume;
+    this.audio.volume =
+      this._valueVolume * this._propertyVolume * this._settingVolume;
   }
 
   get loop(): boolean {

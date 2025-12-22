@@ -26,6 +26,8 @@ export interface AudioObject {
 
   propertyVolume: number;
 
+  settingVolume: number;
+
   loop: boolean;
 
   getPropertyValue(
@@ -44,6 +46,7 @@ export class DOMAudioObject implements AudioObject {
 
   private _valueVolume = 1;
   private _propertyVolume = 1;
+  private _settingVolume = 1;
   private _volume = 1;
   private _loop = false;
 
@@ -119,8 +122,18 @@ export class DOMAudioObject implements AudioObject {
     this.updateVolume();
   }
 
+  get settingVolume(): number {
+    return this._settingVolume;
+  }
+
+  set settingVolume(value: number) {
+    this._settingVolume = value;
+    this.updateVolume();
+  }
+
   private updateVolume() {
-    this.volume = this._valueVolume * this._propertyVolume;
+    this.volume =
+      this._valueVolume * this._propertyVolume * this._settingVolume;
   }
 
   // Howl doesn't have a quick path for unchanged volume.

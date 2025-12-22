@@ -12,7 +12,7 @@ export const RemotionRoot: React.FC = () => {
         width={1280}
         height={720}
         defaultProps={{
-          baseUrl: 'flowers_01r',
+          baseUrl: 'flowers_02r',
           fps: 60,
           fileName: 'start',
           choices: [],

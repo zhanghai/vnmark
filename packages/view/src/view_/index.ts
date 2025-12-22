@@ -1,4 +1,5 @@
 export * from './AudioObject';
+export * from './AudioVolumeSetting';
 export * from './ChoiceObject';
 export * from './Clock';
 export * from './Effect';

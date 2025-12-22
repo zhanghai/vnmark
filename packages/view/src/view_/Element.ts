@@ -18,6 +18,7 @@ import {
 import { Package } from '../package';
 import { HTMLElements } from '../util';
 import { AudioObject, DOMAudioObject } from './AudioObject';
+import { AudioVolumeSetting } from './AudioVolumeSetting';
 import { ChoiceObject, DOMChoiceObject, NewChoiceObject } from './ChoiceObject';
 import { Clock } from './Clock';
 import { Effect } from './Effect';
@@ -748,6 +749,7 @@ export class AudioElement extends ContentElement<
   constructor(
     private readonly package_: Package,
     clock: Clock,
+    private readonly audioVolumeSetting: AudioVolumeSetting,
     private readonly newObject: () => AudioObject = () => new DOMAudioObject(),
   ) {
     super(clock, true);
@@ -772,6 +774,7 @@ export class AudioElement extends ContentElement<
     try {
       const object = this.newObject();
       await object.load(url);
+      this.audioVolumeSetting.onAudioObjectCreated(object, type, value);
       return object;
     } catch (e) {
       url.revoke();
@@ -780,6 +783,7 @@ export class AudioElement extends ContentElement<
   }
 
   protected destroyObject(object: AudioObject) {
+    this.audioVolumeSetting.onAudioObjectDestroyed(object);
     object.destroy();
     object.url.revoke();
   }

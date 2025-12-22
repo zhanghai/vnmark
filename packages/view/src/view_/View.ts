@@ -11,6 +11,7 @@ import {
 import { HTMLElements, Numbers } from '../util';
 import { Animations } from '../util/Animations';
 import { AudioObject, DOMAudioObject } from './AudioObject';
+import { AudioVolumeSetting } from './AudioVolumeSetting';
 import { DOMChoiceObject, NewChoiceObject } from './ChoiceObject';
 import { Clock } from './Clock';
 import {
@@ -91,6 +92,9 @@ export class View {
     private readonly parentElement: HTMLElement,
     private readonly engine: Engine,
     private readonly clock: Clock,
+    private readonly audioVolumeSetting: AudioVolumeSetting = new AudioVolumeSetting(
+      (_, value) => (/(h_)?bgm/.test(value) ? 0.6 : 1),
+    ),
     private readonly newAudioObject: () => AudioObject = () =>
       new DOMAudioObject(),
     private readonly newVideoObject: () => VideoObject = () =>
@@ -253,6 +257,7 @@ export class View {
             element = new AudioElement(
               this.engine.package_,
               this.clock,
+              this.audioVolumeSetting,
               this.newAudioObject,
             );
             break;

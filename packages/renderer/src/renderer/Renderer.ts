@@ -33,6 +33,7 @@ export class Renderer {
       parentElement,
       engine,
       this.clock,
+      undefined,
       () => new RemotionAudioObject(this.clock, isDryRun, context),
       () =>
         new RemotionVideoObject(
