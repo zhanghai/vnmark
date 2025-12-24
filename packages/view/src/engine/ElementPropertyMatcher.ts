@@ -29,6 +29,10 @@ export class ElementPropertyMatcher {
 }
 
 export namespace ElementPropertyMatcher {
+  export const Any: ElementPropertyMatcher = new ElementPropertyMatcher([
+    [Matcher.Any, Matcher.Any],
+  ]);
+
   export function parse(input: string): ElementPropertyMatcher;
   export function parse(input: string[]): ElementPropertyMatcher;
   export function parse(input: string | string[]): ElementPropertyMatcher {

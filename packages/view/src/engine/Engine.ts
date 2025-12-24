@@ -238,6 +238,17 @@ export class Engine {
       };
       await this.loadWithStatus(this.loadDocument(this._state.fileName));
 
+      if (state) {
+        await this.updateView({
+          type: 'snap_layout',
+          layoutName: this._state.layoutName,
+        });
+        await this.updateView({
+          type: 'snap',
+          elementPropertyMatcher: ElementPropertyMatcher.Any,
+        });
+      }
+
       while (true) {
         const commandLines = this._document.commandLines;
         const commandIndex = this._state.nextCommandIndex;

@@ -78,6 +78,16 @@ export class Player {
           this.view.isSkipping = true;
           this.view.isContinuing = false;
           this.continueOrSkipWait();
+        } else if (
+          event.key === 'F5' &&
+          !event.metaKey &&
+          !event.altKey &&
+          !event.shiftKey &&
+          !event.isComposing
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          console.info(this.engine.state);
         }
       },
       { signal },

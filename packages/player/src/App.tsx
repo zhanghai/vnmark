@@ -14,7 +14,8 @@ function App() {
     const player = new Player(viewRef.current!, engine);
     await player.init();
     try {
-      await engine.execute();
+      // @ts-expect-error TS7015
+      await engine.execute(window['state']);
     } finally {
       player.destroy();
     }
