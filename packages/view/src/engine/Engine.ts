@@ -54,7 +54,7 @@ export class Document {
     let lines =
       document.body?.lines.filter(it => it.type !== NodeType.CommentLine) ?? [];
 
-    const metadata = { ...document.frontMatter.metadata, METADATA_DEFAULTS };
+    const metadata = { ...METADATA_DEFAULTS, ...document.frontMatter.metadata };
     const macroLine = (metadata['macro_line'] as string[] | undefined) ?? [];
     lines = lines.flatMap(line => {
       if (line.type === NodeType.MacroLine) {
@@ -228,13 +228,12 @@ export class Engine {
     try {
       this._status = { type: 'executing' };
       this._state = {
-        fileName: this.package_.manifest.entrypoint,
-        nextCommandIndex: 0,
-        layoutName: 'none',
-        elements: {},
-        scriptStates: {},
-        keepSkippingWait: false,
-        ...state,
+        fileName: state?.fileName ?? this.package_.manifest.entrypoint,
+        nextCommandIndex: state?.nextCommandIndex ?? 0,
+        layoutName: state?.layoutName ?? 'none',
+        elements: state?.elements ?? {},
+        scriptStates: state?.scriptStates ?? {},
+        keepSkippingWait: state?.keepSkippingWait ?? false,
       };
       await this.loadWithStatus(this.loadDocument(this._state.fileName));
 
