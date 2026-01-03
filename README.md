@@ -7,3 +7,4 @@ VNMark is a Markdown-like language for visual novel scripting.
 - [View](https://github.com/zhanghai/vnmark/tree/master/packages/view)
 - [Player](https://github.com/zhanghai/vnmark/tree/master/packages/player)
 - [Renderer](https://github.com/zhanghai/vnmark/tree/master/packages/renderer)
+- [Segmenter](https://github.com/zhanghai/vnmark/tree/master/packages/segmenter)

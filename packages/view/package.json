@@ -40,7 +40,7 @@
     "@vnmark/parser": "^1.1.1",
     "@zip.js/zip.js": "^2.7.60",
     "bezier-easing": "^2.1.0",
-    "dompurify": "^3.2.6",
+    "dompurify": "^3.3.1",
     "howler": "^2.2.4",
     "immer": "^10.1.1",
     "lodash.escaperegexp": "^4.1.2",

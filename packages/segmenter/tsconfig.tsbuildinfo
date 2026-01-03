@@ -1,0 +1,1 @@
+{"root":["./vite.config.ts","./src/index.ts","./src/segmenter/NodeFsPackage.ts","./src/segmenter/Segment.ts","./src/segmenter/Segmenter.ts","./src/segmenter/SegmenterView.ts","./src/segmenter/index.ts"],"version":"5.7.3"}

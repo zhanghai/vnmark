@@ -174,7 +174,7 @@ export interface EngineState {
   readonly nextCommandIndex: number;
   readonly layoutName: string;
   readonly elements: Readonly<Record<string, ElementProperties>>;
-  readonly scriptStates: Record<string, unknown>;
+  readonly scriptStates: Readonly<Record<string, unknown>>;
   readonly keepSkippingWait: boolean;
 }
 
