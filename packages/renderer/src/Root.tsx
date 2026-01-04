@@ -14,7 +14,6 @@ export const RemotionRoot: React.FC = () => {
         defaultProps={{
           baseUrl: 'flowers_02r',
           fps: 60,
-          fileName: 'start',
           choices: [],
         }}
         calculateMetadata={useCalculateVnmarkMetadata()}

@@ -114,6 +114,9 @@ export class Renderer {
                 this.frame >= this.choiceHighlightFrame
               ) {
                 this.choiceHighlightFrame = undefined;
+                if (this.nextChoiceIndex >= this.choiceIndices.length) {
+                  return false;
+                }
                 viewStatus.highlight(this.choiceIndices[this.nextChoiceIndex]);
                 await Globals.delay();
                 continue;
