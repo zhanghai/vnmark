@@ -16,6 +16,11 @@ export class SegmenterView {
     this.layout = new Layout(rootElement, clock);
     // @ts-expect-error TS2790
     delete global.HTMLElement;
+    this.engine.addCommand({
+      name: '_animate',
+      argumentCount: 2,
+      execute: async () => true,
+    });
     this.engine.onUpdateView = options => this.update(options);
   }
 
