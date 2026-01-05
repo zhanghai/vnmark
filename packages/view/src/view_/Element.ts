@@ -59,6 +59,8 @@ export interface Element<Properties extends ElementProperties, Options> {
     fraction: number,
   ): void;
 
+  deanimate(propertyMatcher: Matcher): void;
+
   destroy(): void;
 }
 
@@ -379,6 +381,24 @@ export abstract class ContentElement<
           startPropertyValue +
           fraction * (endPropertyValue - startPropertyValue);
         // @ts-expect-error TS2345
+        this.setPropertyValue(this.object!, propertyName, propertyValue);
+      }
+    }
+  }
+
+  deanimate(propertyMatcher: Matcher) {
+    if (!this.propertyNames) {
+      return;
+    }
+    for (const propertyName of this.propertyNames) {
+      if (propertyMatcher.match(propertyName as string)) {
+        const propertyValue = this.resolvePropertyValue(
+          propertyName,
+          this.properties![propertyName],
+          this.properties!.type,
+          this.object!,
+          this.options!,
+        );
         this.setPropertyValue(this.object!, propertyName, propertyValue);
       }
     }
@@ -1046,6 +1066,9 @@ export class AnimationElement
         });
       },
       () => {
+        this.elements.forEach((element, elementName) => {
+          element.deanimate(matcher.getPropertyMatcher(elementName));
+        });
         this.animation = undefined;
       },
       resolvedProperties.duration,
@@ -1099,6 +1122,8 @@ export class AnimationElement
     _endValue: PropertyValue,
     _fraction: number,
   ) {}
+
+  deanimate(_propertyMatcher: Matcher) {}
 
   destroy() {
     this.animation?.finishOrCancel();
@@ -1180,6 +1205,8 @@ export class EffectElement
     _endValue: PropertyValue,
     _fraction: number,
   ) {}
+
+  deanimate(_propertyMatcher: Matcher) {}
 
   destroy() {
     this.effect?.finish();

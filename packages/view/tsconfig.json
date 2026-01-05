@@ -5,6 +5,7 @@
     "module": "ESNext",
     "lib": [
       "ES2020",
+      "ES2021.String",
       "ES2022.Error",
       "ES2022.Intl",
       "DOM",

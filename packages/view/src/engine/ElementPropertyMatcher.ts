@@ -47,10 +47,14 @@ export namespace ElementPropertyMatcher {
           `Invalid element property "${elementPropertyName}"`,
         );
       }
-      const [elementName, propertyName] = elementAndPropertyNames;
+      const [elementName, unresolvedPropertyName] = elementAndPropertyNames;
+      const resolvedPropertyName = unresolvedPropertyName?.replaceAll(
+        /(?<!^)_(.)/g,
+        (_, char) => char.toUpperCase(),
+      );
       matchers.push([
         createGlobMatcher(elementName),
-        createGlobMatcher(propertyName),
+        createGlobMatcher(resolvedPropertyName),
       ]);
     }
     return new ElementPropertyMatcher(matchers);
