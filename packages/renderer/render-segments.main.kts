@@ -11,11 +11,13 @@ import kotlinx.serialization.json.jsonPrimitive
 
 val jsonFile = requireNotNull(args[0]) { "JSON file must be provided" }.let { File(it) }
 val startIndex = args.getOrNull(1)?.let { it.toInt() } ?: 0
+val endIndex = args.getOrNull(2)?.let { it.toInt() } ?: Int.MAX_VALUE
+val remotionArgs = if (args.size > 3) args.toList().subList(3, args.size) else emptyList()
 
 val segments = Json.parseToJsonElement(jsonFile.readText()).jsonObject
 
 segments.entries.forEachIndexed { index, (segmentKey, segmentElement) ->
-    if (index < startIndex) {
+    if (index !in startIndex ..< endIndex) {
         return@forEachIndexed
     }
     val segment = segmentElement.jsonObject
@@ -27,17 +29,19 @@ segments.entries.forEachIndexed { index, (segmentKey, segmentElement) ->
     val end = segment["end"]?.toString() ?: "{}"
     println("Rendering #$index: $segmentKey")
     ProcessBuilder(
-        "npx",
-        "remotion",
-        "render",
-        "Vnmark",
-        "--props={\"state\":$state,\"end\":$end}",
-        "--color-space=bt709",
-        "--image-format=png",
-        "--timeout=7200000",
-        "--concurrency=5",
-        "out/$segmentKey.mp4",
-    )
+            listOf(
+                "npx",
+                "remotion",
+                "render",
+                "Vnmark",
+                "--props={\"state\":$state,\"end\":$end}",
+                "--color-space=bt709",
+                "--image-format=png",
+                "--timeout=7200000",
+                "--concurrency=5",
+                "out/$segmentKey.mp4",
+            ) + remotionArgs
+        )
         .inheritIO()
         .start()
         .waitFor()
