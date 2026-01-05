@@ -46,6 +46,23 @@ export class Segmenter {
   private onExecuteCommand(command: CommandLine): boolean {
     const commandName = (command.name as LiteralValue).value;
     switch (commandName) {
+      case 'set_property': {
+        const elementName = (command.arguments[0] as LiteralValue).value;
+        if (elementName === 'choice1') {
+          const propertyName = (command.arguments[1] as LiteralValue).value;
+          if (propertyName === 'value') {
+            const propertyValue = (
+              command.arguments[2] as LiteralValue | QuotedValue
+            ).value;
+            if (propertyValue !== 'none') {
+              this.endCurrentSegment();
+              // Move on to the pause command.
+              return true;
+            }
+          }
+        }
+        break;
+      }
       case 'pause': {
         const choiceCount = Object.values(this.engine.state.elements).reduce(
           (accumulator, currentValue) =>
@@ -53,9 +70,8 @@ export class Segmenter {
           0,
         );
         if (choiceCount > 0) {
-          this.endCurrentSegment(true);
           this.pendingChoiceCount = choiceCount;
-          // Move on to jump_if commands.
+          // Move on to the jump_if commands.
           return true;
         }
         break;
@@ -155,14 +171,12 @@ export class Segmenter {
     return true;
   }
 
-  private endCurrentSegment(includeNextCommand: boolean = false) {
+  private endCurrentSegment() {
     const state = this.engine.state;
     const segment = this.currentSegment;
     segment.end = {
       fileName: state.fileName,
-      nextCommandIndex: includeNextCommand
-        ? state.nextCommandIndex + 1
-        : state.nextCommandIndex,
+      nextCommandIndex: state.nextCommandIndex,
     };
     if (
       segment.state !== undefined &&
