@@ -20,7 +20,7 @@ import {
 } from 'quickjs-emscripten';
 
 import { Package } from '../package';
-import { COMMANDS } from './Command';
+import { Command, COMMANDS } from './Command';
 import { ElementProperties } from './ElementProperties';
 import { ElementPropertyMatcher } from './ElementPropertyMatcher';
 
@@ -189,31 +189,14 @@ export type UpdateViewOptions =
   | { type: 'wait'; elementPropertyMatcher: ElementPropertyMatcher };
 
 export class Engine {
+  private commands = new Map(COMMANDS);
+
   public onUpdateView: ViewUpdater | undefined;
 
   private _status: EngineStatus = { type: 'ready' };
-
-  get status(): EngineStatus {
-    return this._status;
-  }
-
   private _state!: EngineState;
-
-  get state(): EngineState {
-    return this._state;
-  }
-
   private _lastState: EngineState | undefined;
-
-  get lastState(): EngineState | undefined {
-    return this._lastState;
-  }
-
   private _document!: Document;
-
-  get document(): Document {
-    return this._document;
-  }
 
   constructor(
     readonly package_: Package,
@@ -223,6 +206,26 @@ export class Engine {
       command: CommandLine,
     ) => boolean = () => true,
   ) {}
+
+  addCommand(command: Command) {
+    this.commands.set(command.name, command);
+  }
+
+  get status(): EngineStatus {
+    return this._status;
+  }
+
+  get state(): EngineState {
+    return this._state;
+  }
+
+  get lastState(): EngineState | undefined {
+    return this._lastState;
+  }
+
+  get document(): Document {
+    return this._document;
+  }
 
   async execute(state?: Partial<EngineState>) {
     try {
@@ -285,7 +288,7 @@ export class Engine {
 
   private async executeCommand(commandLine: CommandLine): Promise<boolean> {
     const commandName = this.getValue(commandLine.name);
-    const command = COMMANDS.get(commandName);
+    const command = this.commands.get(commandName);
     if (!command) {
       throw new EngineError(`Unsupported command "${commandName}"`);
     }

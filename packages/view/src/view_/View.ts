@@ -73,7 +73,7 @@ const CONTINUE_DURATION_MILLIS = 1500;
 export class View {
   private readonly rootElement = document.createElement('div');
 
-  private readonly onSuspendElements: HTMLElement[] = [];
+  private readonly onSuspendStyleScriptElements: HTMLElement[] = [];
 
   private layout!: Layout;
   private readonly elements = new Map<
@@ -111,6 +111,19 @@ export class View {
     await this.loadWithStatus(this.loadTemplate());
     this.layout = new Layout(this.rootElement, this.clock);
     this.parentElement.appendChild(this.rootElement);
+    this.engine.addCommand({
+      name: '_animate',
+      argumentCount: 2,
+      execute: async (_, arguments_) => {
+        const element = this.layout.requireElementById(arguments_[0]);
+        const animateArguments = JSON.parse(arguments_[1]) as Parameters<
+          HTMLElement['animate']
+        >;
+        // noinspection ES6MissingAwait
+        this.animateElement(element, undefined, ...animateArguments);
+        return true;
+      },
+    });
     this.engine.onUpdateView = options => this.update(options);
   }
 
@@ -143,11 +156,8 @@ export class View {
           );
         }
       }
-      if (
-        element.dataset.onSuspendAnimateScript ||
-        element.dataset.onSuspendStyleScript
-      ) {
-        this.onSuspendElements.push(element);
+      if (element.dataset.onSuspendStyleScript) {
+        this.onSuspendStyleScriptElements.push(element);
       }
       return true;
     });
@@ -341,20 +351,9 @@ export class View {
       }
     });
 
-    for (const element of this.onSuspendElements) {
-      const animateScript = element.dataset.onSuspendAnimateScript;
-      if (animateScript) {
-        const animateArguments = this.engine.evaluateScript(
-          animateScript,
-        ) as Parameters<HTMLElement['animate']>;
-        if (animateArguments) {
-          this.animateElement(element, undefined, ...animateArguments);
-        }
-      }
-      const styleScript = element.dataset.onSuspendStyleScript;
-      if (styleScript) {
-        element.style.cssText = this.engine.evaluateScript(styleScript);
-      }
+    for (const element of this.onSuspendStyleScriptElements) {
+      const styleScript = element.dataset.onSuspendStyleScript!;
+      element.style.cssText = this.engine.evaluateScript(styleScript);
     }
 
     switch (options.type) {

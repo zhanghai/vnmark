@@ -28,13 +28,13 @@ export class Layout {
   private readonly transitions: Animation[] = [];
 
   constructor(
-    rootElement: HTMLElement,
+    private readonly rootElement: HTMLElement,
     private readonly clock: Clock,
   ) {
     const layoutNameSet = new Set(['none']);
     this.elementLayouts = new Map();
     HTMLElements.forEachDescendant(rootElement, element => {
-      const layoutNames = getElementLayoutNames(element);
+      const layoutNames = this.getElementLayoutNames(element);
       if (layoutNames.length) {
         if (!layoutNames.includes('none')) {
           HTMLElements.setOpacity(element, 0);
@@ -74,7 +74,7 @@ export class Layout {
           element,
           rootElement,
           it => {
-            const layoutNames = getElementLayoutNames(it);
+            const layoutNames = this.getElementLayoutNames(it);
             return layoutNames.length ? layoutNames : undefined;
           },
         ) ?? this.layoutNames;
@@ -95,7 +95,7 @@ export class Layout {
       return true;
     });
 
-    this.pointerElement = this.requireElementById(rootElement, 'pointer');
+    this.pointerElement = this.requireElementById('pointer');
   }
 
   private getLayoutTypeElements(
@@ -119,7 +119,7 @@ export class Layout {
           element,
           rootElement,
           it => {
-            const layoutNames = getElementLayoutNames(it);
+            const layoutNames = this.getElementLayoutNames(it);
             return layoutNames.length ? layoutNames : undefined;
           },
         ) ?? this.layoutNames;
@@ -141,12 +141,17 @@ export class Layout {
     return layoutTypeElements;
   }
 
-  private requireElementById(
-    rootElement: HTMLElement,
-    id: string,
-  ): HTMLElement {
+  private getElementLayoutNames(element: HTMLElement): string[] {
+    const layoutNamesString = element.dataset.layout?.trim();
+    if (!layoutNamesString) {
+      return [];
+    }
+    return layoutNamesString.split(/[\t\n\f\r ]+/).sort();
+  }
+
+  requireElementById(id: string): HTMLElement {
     const element = HTMLElements.firstDescendantOrUndefined(
-      rootElement,
+      this.rootElement,
       it => it.dataset.id === id,
     );
     if (!element) {
@@ -293,12 +298,4 @@ export class Layout {
       transition.finishOrCancel();
     }
   }
-}
-
-function getElementLayoutNames(element: HTMLElement): string[] {
-  const layoutNamesString = element.dataset.layout?.trim();
-  if (!layoutNamesString) {
-    return [];
-  }
-  return layoutNamesString.split(/[\t\n\f\r ]+/).sort();
 }
