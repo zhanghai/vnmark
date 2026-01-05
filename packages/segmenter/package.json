@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -b && vite build",
-    "dev": "tsx src/index.ts",
+    "dev": "tsc -b && tsx src/index.ts",
     "format": "prettier --write .",
     "format-check": "prettier --check .",
     "lint": "eslint .",
