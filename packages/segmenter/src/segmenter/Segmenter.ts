@@ -91,18 +91,22 @@ export class Segmenter {
       case 'jump_if': {
         const labelName = (command.arguments[0] as LiteralValue).value;
         const labelIndex = this.engine.document.labelIndices.get(labelName)!;
-        const condition = (command.arguments[1] as QuotedValue).value;
+        const condition = (command.arguments[1] as LiteralValue | QuotedValue)
+          .value;
         const conditionMatch = condition.match(
-          /^\$\['(\w+)'] (<|>|===) (\d+)$/,
+          /^\$\['(\w+)'](?: (<|>|===) (\d+))?$/,
         );
         if (!conditionMatch) {
           throw new Error(`Unable to parse condition "${condition}"`);
         }
         const [, conditionVariable, conditionOperator, conditionValueString] =
           conditionMatch;
-        const conditionValue = Number(conditionValueString);
+        const conditionValue =
+          conditionValueString !== undefined
+            ? Number(conditionValueString)
+            : undefined;
         if (conditionVariable === 'choice') {
-          const choiceIndex = conditionValue;
+          const choiceIndex = conditionValue!;
           const choiceState: EngineState = {
             ...this.engine.state,
             nextCommandIndex: labelIndex,
@@ -128,41 +132,46 @@ export class Segmenter {
             nextCommandIndex: labelIndex,
             scriptStates: {},
           };
-          switch (conditionOperator) {
-            case '<':
-              this.addSegment(
-                `${conditionVariable} < ${conditionValue}`,
-                trueState,
-              );
-              this.addSegment(
-                `${conditionVariable} >= ${conditionValue}`,
-                falseState,
-              );
-              break;
-            case '>':
-              this.addSegment(
-                `${conditionVariable} > ${conditionValue}`,
-                trueState,
-              );
-              this.addSegment(
-                `${conditionVariable} <= ${conditionValue}`,
-                falseState,
-              );
-              break;
-            case '===':
-              this.addSegment(
-                `${conditionVariable} === ${conditionValue}`,
-                trueState,
-              );
-              this.addSegment(
-                `${conditionVariable} !== ${conditionValue}`,
-                falseState,
-              );
-              break;
-            default:
-              throw new Error(
-                `Unknown condition operator ${conditionOperator}`,
-              );
+          if (conditionOperator) {
+            switch (conditionOperator) {
+              case '<':
+                this.addSegment(
+                  `${conditionVariable} < ${conditionValue}`,
+                  trueState,
+                );
+                this.addSegment(
+                  `${conditionVariable} >= ${conditionValue}`,
+                  falseState,
+                );
+                break;
+              case '>':
+                this.addSegment(
+                  `${conditionVariable} > ${conditionValue}`,
+                  trueState,
+                );
+                this.addSegment(
+                  `${conditionVariable} <= ${conditionValue}`,
+                  falseState,
+                );
+                break;
+              case '===':
+                this.addSegment(
+                  `${conditionVariable} === ${conditionValue}`,
+                  trueState,
+                );
+                this.addSegment(
+                  `${conditionVariable} !== ${conditionValue}`,
+                  falseState,
+                );
+                break;
+              default:
+                throw new Error(
+                  `Unknown condition operator ${conditionOperator}`,
+                );
+            }
+          } else {
+            this.addSegment(`${conditionVariable}`, trueState);
+            this.addSegment(`!${conditionVariable}`, falseState);
           }
           return false;
         }
