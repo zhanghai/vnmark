@@ -76,18 +76,19 @@ export class Segmenter {
         }
         break;
       }
-      case 'jump': {
-        this.endCurrentSegment();
-        const labelName = (command.arguments[0] as LiteralValue).value;
-        const labelIndex = this.engine.document.labelIndices.get(labelName)!;
-        const targetState: EngineState = {
-          ...this.engine.state,
-          nextCommandIndex: labelIndex,
-          scriptStates: {},
-        };
-        this.addSegment('jump', targetState);
-        return false;
-      }
+      // Unfortunately number of segments will exceed 200 if we do this for 02.
+      // case 'jump': {
+      //   this.endCurrentSegment();
+      //   const labelName = (command.arguments[0] as LiteralValue).value;
+      //   const labelIndex = this.engine.document.labelIndices.get(labelName)!;
+      //   const targetState: EngineState = {
+      //     ...this.engine.state,
+      //     nextCommandIndex: labelIndex,
+      //     scriptStates: {},
+      //   };
+      //   this.addSegment('jump', targetState);
+      //   return false;
+      // }
       case 'jump_if': {
         const labelName = (command.arguments[0] as LiteralValue).value;
         const labelIndex = this.engine.document.labelIndices.get(labelName)!;
