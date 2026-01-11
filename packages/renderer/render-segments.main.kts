@@ -10,20 +10,18 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 val jsonFile = requireNotNull(args[0]) { "JSON file must be provided" }.let { File(it) }
+val segments = Json.parseToJsonElement(jsonFile.readText()).jsonObject.entries.toList()
 val startIndex = args.getOrNull(1)?.let { it.toInt() } ?: 0
-val endIndex = args.getOrNull(2)?.let { it.toInt() } ?: Int.MAX_VALUE
-val remotionArgs = if (args.size > 3) args.toList().subList(3, args.size) else emptyList()
+val endIndex = args.getOrNull(2)?.let { it.toInt() } ?: segments.size
+val indexStep = args.getOrNull(3)?.let { it.toInt() } ?: 1
+val remotionArgs = if (args.size > 4) args.toList().subList(4, args.size) else emptyList()
 
-val segments = Json.parseToJsonElement(jsonFile.readText()).jsonObject
-
-segments.entries.forEachIndexed { index, (segmentKey, segmentElement) ->
-    if (index !in startIndex ..< endIndex) {
-        return@forEachIndexed
-    }
+for (index in startIndex ..< endIndex step indexStep) {
+    val (segmentKey, segmentElement) = segments[index]
     val segment = segmentElement.jsonObject
     val trivial = segment["trivial"]?.jsonPrimitive?.boolean ?: false
     if (trivial) {
-        return@forEachIndexed
+        continue
     }
     val state = segment["state"]?.toString() ?: "{}"
     val end = segment["end"]?.toString() ?: "{}"
@@ -45,5 +43,4 @@ segments.entries.forEachIndexed { index, (segmentKey, segmentElement) ->
         .inheritIO()
         .start()
         .waitFor()
-    return@forEachIndexed
 }
