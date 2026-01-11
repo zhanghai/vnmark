@@ -96,18 +96,17 @@ export namespace HTMLElements {
     parentElement.insertBefore(element, insertBeforeElement);
   }
 
-  export function audioDecode(
-    element: HTMLAudioElement,
-    src: string,
-  ): Promise<void> {
-    if (element.src) {
-      throw new Error(`Audio element already has a src "${src}"`);
-    }
+  export function imageDecode(element: HTMLImageElement): Promise<void> {
     return new Promise((resolve, reject) => {
+      // NOTE: Unfortunately this is still racy.
+      if (element.complete) {
+        resolve();
+        return;
+      }
       const abortController = new AbortController();
       const signal = abortController.signal;
       element.addEventListener(
-        'canplaythrough',
+        'load',
         () => {
           abortController.abort();
           resolve();
@@ -122,8 +121,6 @@ export namespace HTMLElements {
         },
         { signal },
       );
-      element.src = src;
-      element.load();
     });
   }
 }
