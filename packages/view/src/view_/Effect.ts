@@ -63,16 +63,7 @@ export class CrossFadeEffect extends Effect {
     const promises: Promise<void>[] = [];
     HTMLElements.forEachDescendant(this.element, element => {
       if (element instanceof HTMLImageElement) {
-        promises.push(
-          element.decode().catch(reason => {
-            // See https://issues.chromium.org/issues/40261318 .
-            console.warn(
-              `Error when decoding image ${element.src}, will try workaround`,
-              reason,
-            );
-            return HTMLElements.imageDecode(element);
-          }),
-        );
+        promises.push(HTMLElements.imageDecodeCompat(element));
       }
       return true;
     });

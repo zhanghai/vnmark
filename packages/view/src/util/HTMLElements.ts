@@ -96,13 +96,25 @@ export namespace HTMLElements {
     parentElement.insertBefore(element, insertBeforeElement);
   }
 
-  export function imageDecode(element: HTMLImageElement): Promise<void> {
-    return new Promise((resolve, reject) => {
-      // NOTE: Unfortunately this is still racy.
-      if (element.complete) {
-        resolve();
+  export async function imageDecodeCompat(element: HTMLImageElement) {
+    // Or use await loadImage() directly if Remotion isn't happy with any failure in decode().
+    try {
+      await element.decode();
+    } catch (e) {
+      if (element.complete && element.naturalWidth) {
         return;
       }
+      console.warn(
+        `Error calling decode() for ${element.src}: ${e}, will try load event`,
+      );
+      await loadImage(element);
+    }
+  }
+
+  function loadImage(element: HTMLImageElement): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const src = element.src;
+      element.removeAttribute('src');
       const abortController = new AbortController();
       const signal = abortController.signal;
       element.addEventListener(
@@ -121,6 +133,7 @@ export namespace HTMLElements {
         },
         { signal },
       );
+      element.src = src;
     });
   }
 }
