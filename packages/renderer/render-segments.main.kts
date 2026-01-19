@@ -4,6 +4,7 @@
 @file:DependsOn("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
 
 import java.io.File
+import kotlin.math.min
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
@@ -12,7 +13,7 @@ import kotlinx.serialization.json.jsonPrimitive
 val jsonFile = requireNotNull(args[0]) { "JSON file must be provided" }.let { File(it) }
 val segments = Json.parseToJsonElement(jsonFile.readText()).jsonObject.entries.toList()
 val startIndex = args.getOrNull(1)?.let { it.toInt() } ?: 0
-val endIndex = args.getOrNull(2)?.let { it.toInt() } ?: segments.size
+val endIndex = min(args.getOrNull(2)?.let { it.toInt() } ?: Int.MAX_VALUE, segments.size)
 val indexStep = args.getOrNull(3)?.let { it.toInt() } ?: 1
 val remotionArgs = if (args.size > 4) args.toList().subList(4, args.size) else emptyList()
 
