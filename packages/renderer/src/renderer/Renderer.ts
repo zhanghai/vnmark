@@ -4,6 +4,7 @@ import { type RenderAssetManagerContext } from 'remotion/dist/cjs/RenderAssetMan
 import { ElementAnimator } from './ElementAnimator';
 import { RemotionAudioObject } from './RemotionAudioObject';
 import { RemotionChoiceObject } from './RemotionChoiceObject';
+import { RemotionImageObject } from './RemotionImageObject';
 import { RemotionVideoObject } from './RemotionVideoObject';
 
 const CHOICE_HIGHLIGHT_DURATION_MILLIS = 1500;
@@ -34,6 +35,7 @@ export class Renderer {
       engine,
       this.clock,
       undefined,
+      density => new RemotionImageObject(density, isDryRun),
       () => new RemotionAudioObject(this.clock, isDryRun, context),
       () =>
         new RemotionVideoObject(

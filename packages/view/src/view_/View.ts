@@ -27,6 +27,7 @@ import {
   VideoElement,
 } from './Element';
 import { resolveElementValue } from './ElementResolvedProperties';
+import { DOMImageObject, ImageObject } from './ImageObject';
 import { Layout } from './Layout';
 import { DOMVideoObject, VideoObject } from './VideoObject';
 
@@ -95,6 +96,9 @@ export class View {
     private readonly audioVolumeSetting: AudioVolumeSetting = new AudioVolumeSetting(
       (_, value) => (/(h_)?bgm/.test(value) ? 0.6 : 1),
     ),
+    private readonly newImageObject: (
+      density: number,
+    ) => ImageObject = density => new DOMImageObject(density),
     private readonly newAudioObject: () => AudioObject = () =>
       new DOMAudioObject(),
     private readonly newVideoObject: () => VideoObject = () =>
@@ -258,6 +262,7 @@ export class View {
                 containerElement,
                 elementProperties.index,
                 this.clock,
+                this.newImageObject,
               );
             }
             break;

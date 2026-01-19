@@ -3,8 +3,61 @@ import { HTMLElements } from '../util';
 import { ImageElementResolvedProperties } from './ElementResolvedProperties';
 import { ViewError } from './View';
 
-export class ImageObject {
-  private readonly element: HTMLImageElement;
+export interface ImageObject {
+  readonly url: RevocableUrl;
+
+  load(url: RevocableUrl): Promise<void>;
+
+  attach(parentElement: HTMLElement): void;
+
+  detach(): void;
+
+  readonly naturalWidth: number;
+
+  readonly naturalHeight: number;
+
+  anchorX: number;
+
+  anchorY: number;
+
+  positionX: number;
+
+  positionY: number;
+
+  offsetX: number;
+
+  offsetY: number;
+
+  pivotX: number;
+
+  pivotY: number;
+
+  scaleX: number;
+
+  scaleY: number;
+
+  skewX: number;
+
+  skewY: number;
+
+  rotation: number;
+
+  valueAlpha: number;
+
+  propertyAlpha: number;
+
+  getPropertyValue(
+    propertyName: keyof ImageElementResolvedProperties,
+  ): ImageElementResolvedProperties[keyof ImageElementResolvedProperties];
+
+  setPropertyValue(
+    propertyName: keyof ImageElementResolvedProperties,
+    propertyValue: ImageElementResolvedProperties[keyof ImageElementResolvedProperties],
+  ): void;
+}
+
+export class DOMImageObject implements ImageObject {
+  protected readonly element: HTMLImageElement;
   private _url!: RevocableUrl;
 
   private _anchorX = 0;

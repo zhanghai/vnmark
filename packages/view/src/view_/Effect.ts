@@ -3,14 +3,14 @@ import { HTMLElements } from '../util';
 import { Clock } from './Clock';
 import { AnimateElement, ViewError } from './View';
 
-export abstract class Effect {
-  abstract readonly finished: Promise<void>;
+export interface Effect {
+  readonly finished: Promise<void>;
 
-  abstract load(): Promise<void>;
+  load(): Promise<void>;
 
-  abstract play(): void;
+  play(): void;
 
-  abstract finish(): void;
+  finish(): void;
 }
 
 export namespace Effect {
@@ -41,7 +41,7 @@ export namespace Effect {
   }
 }
 
-export class CrossFadeEffect extends Effect {
+export class CrossFadeEffect implements Effect {
   private animation!: Animation;
   private readonly element: HTMLElement;
 
@@ -50,8 +50,6 @@ export class CrossFadeEffect extends Effect {
     private readonly clock: Clock,
     private readonly duration: number,
   ) {
-    super();
-
     this.element = effectElement.cloneNode(true) as HTMLElement;
   }
 
@@ -90,7 +88,7 @@ export class CrossFadeEffect extends Effect {
   }
 }
 
-export class AnimateEffect extends Effect {
+export class AnimateEffect implements Effect {
   private _finished!: Promise<void>;
   private abortController: AbortController | undefined;
 
@@ -98,9 +96,7 @@ export class AnimateEffect extends Effect {
     private readonly effectElement: HTMLElement,
     private readonly animateElement: AnimateElement,
     private readonly animateArguments: Parameters<HTMLElement['animate']>,
-  ) {
-    super();
-  }
+  ) {}
 
   get finished(): Promise<void> {
     return this._finished;

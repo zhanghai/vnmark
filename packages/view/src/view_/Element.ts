@@ -35,7 +35,7 @@ import {
   TextElementResolvedProperties,
   VideoElementResolvedProperties,
 } from './ElementResolvedProperties';
-import { ImageObject } from './ImageObject';
+import { DOMImageObject, ImageObject } from './ImageObject';
 import { TextObject } from './TextObject';
 import { DOMVideoObject, VideoObject } from './VideoObject';
 import { AnimateElement, ViewError } from './View';
@@ -455,6 +455,8 @@ export class ImageElement extends ContentElement<
     container: HTMLElement,
     index: number,
     clock: Clock,
+    private readonly newObject: (density: number) => ImageObject = density =>
+      new DOMImageObject(density),
   ) {
     super(clock, true);
 
@@ -485,7 +487,7 @@ export class ImageElement extends ContentElement<
   ): Promise<ImageObject> {
     const url = await this.package_.getUrl(type, value);
     try {
-      const object = new ImageObject(this.package_.manifest.density);
+      const object = this.newObject(this.package_.manifest.density);
       await object.load(url);
       return object;
     } catch (e) {

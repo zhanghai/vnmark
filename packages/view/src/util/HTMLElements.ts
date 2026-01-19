@@ -96,6 +96,8 @@ export namespace HTMLElements {
     parentElement.insertBefore(element, insertBeforeElement);
   }
 
+  // HTMLImageElement.decode() for large images may fail:
+  // https://issues.chromium.org/issues/40261318
   export async function imageDecodeCompat(element: HTMLImageElement) {
     // Or use await loadImage() directly if Remotion isn't happy with any failure in decode().
     try {
